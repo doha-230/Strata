@@ -50,4 +50,11 @@ build-vision.bat
 *.done
 /third_party/*.zip
 
+# Files generated when running the checked-in offline Windows bundle.
+/offline/strata-win-a6000-iq3_xxs-vision/models/*-of-00002.gguf
+/offline/strata-win-a6000-iq3_xxs-vision/packs/
+/offline/strata-win-a6000-iq3_xxs-vision/strata-iq3_xxs.json
+/offline/strata-win-a6000-iq3_xxs-vision/calibration-iq3_xxs.json*
+/offline/strata-win-a6000-iq3_xxs-vision/strata-iq3_xxs.log
+
 /.rocm-win/
