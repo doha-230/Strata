@@ -1,6 +1,6 @@
 # Strata: 폐쇄망 Windows 배포판
 
-이 저장소는 [원본 Strata](https://github.com/Niko1221/Strata)를 기반으로 합니다. Windows PC에서 **Qwen3.8-Flash-Next GSQ-RCO IQ3_XXS**를 인터넷 연결 없이 실행할 수 있도록 패키지를 제공합니다. GPU 이미지 입력과 MTP를 기본으로 켰습니다.
+이 저장소는 [원본 Strata v0.1.45](https://github.com/Niko1221/Strata/releases/tag/v0.1.45)를 기반으로 합니다. Windows PC에서 **Qwen3.8-Flash-Next GSQ-RCO IQ3_XXS**를 인터넷 연결 없이 실행할 수 있도록 패키지를 제공합니다. GPU 이미지 입력과 MTP를 기본으로 켰습니다.
 
 실행에 필요한 Windows 엔진, Python, CUDA 런타임, 이미지 인코더와 `mmproj`, MTP 가중치는 포함했습니다. **메인 LLM GGUF 두 조각과 NVIDIA 시스템 드라이버는 포함하지 않았습니다.** 패키지는 압축 무결성을 확인했지만, Windows 실기기 실행은 아직 검증하지 못했습니다.
 
@@ -8,11 +8,11 @@
 
 | 파일 | 용도 |
 | --- | --- |
-| [Release ZIP](https://github.com/doha-230/Strata/releases/download/v0.1.38-offline-iq3xxs-vision/strata-win-iq3_xxs-vision.zip) | 폐쇄망 PC로 옮겨 압축 해제하는 완성 패키지 |
-| [압축 전 파일](offline/strata-win-iq3_xxs-vision/) | Git에서 개별 파일을 관리하는 폴더. 큰 파일은 Git LFS 사용 |
+| [Release ZIP](https://github.com/doha-230/Strata/releases/download/v0.1.45-offline-iq3xxs-vision/strata-win-iq3_xxs-vision.zip) | 폐쇄망 PC로 옮겨 압축 해제하는 완성 패키지 |
+| [압축 전 파일](offline/strata-win-iq3_xxs-vision/) | Git에서 개별 파일을 관리하는 폴더. 큰 파일은 이 저장소의 Git LFS 사용 |
 | [한국어 HTML 설명서](docs/OFFLINE_WINDOWS_IQ3XXS_KO.html) | 파일 위치, 설정 변경, 메모리 사용 및 문제 해결 |
 
-ZIP SHA-256: `a1fb718229b44d3518bfc904cae5d419b60dc24695e7daa8478d5b03cf3b581f` (1,989,015,514바이트).
+ZIP SHA-256: `886e7bb1a8df50ac95051ab7f29b4bb66a5b7c312252fe36fcd0d006c25376b2` (2,039,005,358바이트). 변경 사항은 [v0.1.45 릴리즈 노트](docs/releases/v0.1.45-offline-iq3xxs-vision.md)에 있습니다.
 
 폐쇄망 PC에는 **Release ZIP**을 가져가세요. GitHub의 저장소 소스 ZIP은 Git LFS 파일을 받는 방법으로 사용하지 마세요.
 
@@ -51,7 +51,7 @@ GPU·CPU·드라이버나 주요 모델 설정이 바뀌면 저장된 결과를 
 
 ## Git으로 받기
 
-Git을 쓰는 PC에는 Git LFS가 필요합니다. 대용량 객체는 [별도 공개 LFS 저장소](https://github.com/doha-230/Strata-offline-assets)에 저장했습니다. `.lfsconfig`가 그 주소를 지정합니다.
+Git을 쓰는 PC에는 Git LFS가 필요합니다. 대용량 객체는 이 저장소의 Git LFS에 저장합니다.
 
 ```sh
 git lfs install
@@ -62,9 +62,13 @@ git lfs pull
 
 파일은 `offline/strata-win-iq3_xxs-vision/`에 있습니다. Git을 사용하는 경우에도 메인 GGUF 두 조각은 직접 넣어야 합니다. 폐쇄망으로 옮길 때는 LFS가 필요 없는 Release ZIP을 사용하면 됩니다.
 
+## 이전 ZIP에서 업데이트
+
+새 ZIP을 새 폴더에 풀고, 기존 폴더의 메인 GGUF 두 조각을 새 폴더의 `models`로 복사한 뒤 `RUN.bat`을 실행합니다. 기존 설정·캘리브레이션 파일은 복사하지 않습니다. 속도 측정값은 새 엔진에서 `CALIBRATE.bat`으로 다시 만듭니다. 자세한 절차는 HTML 설명서에 있습니다.
+
 ## 구성과 출처
 
-- [패키지 생성 스크립트](tools/build_offline_windows_iq3xxs.py)는 인터넷이 되는 빌드 PC에서 Windows 엔진 v0.1.38, Python 3.12, CUDA 13 런타임과 필요한 파일을 모읍니다.
+- [패키지 생성 스크립트](tools/build_offline_windows_iq3xxs.py)는 인터넷이 되는 빌드 PC에서 Windows 엔진 v0.1.45, Python 3.12, CUDA 13 런타임과 필요한 파일을 모읍니다.
 - [실행 준비 스크립트](tools/offline_iq3xxs_prepare.py)는 GGUF, 드라이버와 필수 파일을 확인한 뒤 로컬 실행 설정을 만듭니다.
 - Strata 본체와 일반 설치 문서는 [원본 프로젝트](https://github.com/Niko1221/Strata)를 바탕으로 합니다. 이 패키지의 실기기 실행 속도는 아직 측정하지 않았습니다.
 - Strata 소스는 [MIT 라이선스](LICENSE)를 따릅니다. 모델과 포함된 다른 구성요소에는 각각의 라이선스가 적용됩니다.

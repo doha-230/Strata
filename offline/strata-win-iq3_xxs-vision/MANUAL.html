@@ -84,7 +84,7 @@
   <div class="layout">
     <nav class="toc" aria-label="설명서 목차">
       <strong>목차</strong>
-      <a href="#start">먼저 할 일</a><a href="#requirements">PC 조건</a><a href="#files">파일 넣는 곳</a><a href="#launch">실행과 확인</a><a href="#use">채팅·이미지·API</a><a href="#memory">VRAM·RAM·SSD</a><a href="#settings">설정 바꾸기</a><a href="#calibration">자동 캘리브레이션</a><a href="#trouble">문제 해결</a><a href="#reference">구성·검증</a>
+      <a href="#start">먼저 할 일</a><a href="#requirements">PC 조건</a><a href="#files">파일 넣는 곳</a><a href="#launch">실행과 확인</a><a href="#upgrade">기존 버전에서 옮기기</a><a href="#use">채팅·이미지·API</a><a href="#memory">VRAM·RAM·SSD</a><a href="#settings">설정 바꾸기</a><a href="#calibration">자동 캘리브레이션</a><a href="#trouble">문제 해결</a><a href="#reference">구성·검증</a>
     </nav>
     <main id="main">
       <section id="start">
@@ -203,10 +203,16 @@
         <p>자세한 오류는 압축 해제한 폴더의 <code>strata-iq3_xxs.log</code>와 실행 창 마지막 줄에서 확인합니다.</p>
       </section>
 
+      <section id="upgrade">
+        <h2>기존 버전에서 옮기기</h2>
+        <p>새 ZIP을 <strong>새 폴더</strong>에 풀고, 기존 폴더의 메인 GGUF 두 파일만 새 폴더의 <code>models</code>로 복사하세요. 기존 폴더는 새 버전이 정상 실행될 때까지 보관하면 됩니다.</p>
+        <p>새 폴더에서 <code>RUN.bat</code>을 실행하면 필요한 pack과 설정을 준비합니다. 예전 <code>strata-iq3_xxs.json</code>이나 <code>calibration-iq3_xxs.json</code>을 복사하지 마세요. 엔진 버전이 바뀌었으므로 속도 측정값은 새 폴더에서 <code>CALIBRATE.bat</code>으로 다시 만듭니다.</p>
+      </section>
+
       <section id="reference">
         <h2>패키지 구성과 검증 범위</h2>
         <ul>
-          <li>포함: Strata Windows 엔진 v0.1.38, Python 3.12, CUDA 13 런타임·cuBLAS, GPU 이미지 인코더와 <code>mmproj</code>, 변환된 MTP 런타임, 웹 앱.</li>
+          <li>포함: Strata Windows 엔진 v0.1.45, Python 3.12, CUDA 13 런타임·cuBLAS, GPU 이미지 인코더와 <code>mmproj</code>, 변환된 MTP 런타임, 웹 앱.</li>
           <li>제외: 메인 LLM GGUF 두 조각, NVIDIA 시스템 드라이버.</li>
           <li>압축 파일의 내용 목록과 CRC를 검사했고, 메인 LLM GGUF가 들어 있지 않은 것을 확인했습니다. 주요 파일의 해시는 <code>SHA256SUMS.txt</code>에 기록되어 있습니다.</li>
         </ul>

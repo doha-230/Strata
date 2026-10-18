@@ -21,7 +21,9 @@ NAME = "strata-win-iq3_xxs-vision"
 STAGE = DIST / NAME
 CACHE = DIST / "downloads"
 PYTHON_URL = "https://www.python.org/ftp/python/3.12.10/python-3.12.10-embed-amd64.zip"
-ENGINE_URL = "https://github.com/Niko1221/Strata/releases/download/v0.1.38/strata-windows-x64.zip"
+ENGINE_VERSION = "0.1.45"
+ENGINE_URL = f"https://github.com/Niko1221/Strata/releases/download/v{ENGINE_VERSION}/strata-windows-x64.zip"
+ENGINE_SHA256 = "a1d4cafb8319c253f3010ff118dbd5ed07c232056b939ac7735819559f3b859e"
 MMPROJ_URL = ("https://huggingface.co/ISTA-DASLab/Qwen3.8-Flash-Next-GSQ-RCO-GGUF/"
               "resolve/ed59f92082b1e93c0e96d60a8b11aab089b52f09/"
               "mmproj-Qwen3.8-Flash-Next-BF16.gguf")
@@ -49,13 +51,16 @@ def fetch(url: str, dst: Path) -> None:
 
 def main() -> None:
     CACHE.mkdir(parents=True, exist_ok=True)
-    STAGE.mkdir(parents=True, exist_ok=True)
-    py_zip, eng_zip, mmproj = (CACHE / "python-embed.zip", CACHE / "engine.zip", CACHE / "mmproj.gguf")
+    py_zip, eng_zip, mmproj = (CACHE / "python-embed.zip", CACHE / f"engine-v{ENGINE_VERSION}.zip", CACHE / "mmproj.gguf")
     fetch(PYTHON_URL, py_zip)
     fetch(ENGINE_URL, eng_zip)
     fetch(MMPROJ_URL, mmproj)
+    if hashlib.sha256(eng_zip.read_bytes()).hexdigest() != ENGINE_SHA256:
+        raise RuntimeError("engine SHA-256 differs from the upstream release")
     if hashlib.sha256(mmproj.read_bytes()).hexdigest() != MMPROJ_SHA256:
         raise RuntimeError("mmproj SHA-256 differs from the checked file")
+    shutil.rmtree(STAGE, ignore_errors=True)
+    STAGE.mkdir(parents=True)
 
     rt = DIST / "mtp-build" / "rt"
     if not all((rt / x).is_file() for x in ("experts.bin", "dense.bin", "dense.txt")):
@@ -107,8 +112,8 @@ def main() -> None:
     with zipfile.ZipFile(eng_zip) as z:
         z.extractall(eng_dir)
     meta = json.loads((eng_dir / "BUILD.json").read_text())
-    if tuple(map(int, meta["version"].split("."))) < (0, 1, 38):
-        raise RuntimeError("engine must be v0.1.38 or newer")
+    if meta["version"] != ENGINE_VERSION:
+        raise RuntimeError(f"engine must be v{ENGINE_VERSION}")
     if not {"strata.exe", "strata-vision.exe"} <= {p.name for p in eng_dir.iterdir()}:
         raise RuntimeError("Windows engine or image encoder is missing")
 
