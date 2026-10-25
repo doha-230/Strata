@@ -59,10 +59,10 @@
   </ol>
   <p>Windows PowerShell에서 실행 파일 해시를 확인하려면 다음을 입력합니다.</p>
   <pre><code>Get-FileHash .\engine\strata.exe -Algorithm SHA256</code></pre>
-  <p>검사한 SHA-256을 릴리스 페이지의 <code>strata.exe</code> 값과 비교하세요.</p>
+  <p>기본 ON 빌드의 <code>strata.exe</code> SHA-256은 <code>f2302786a8b399d10d8282043ebc518b136fdb21c4da3ee058b76112c58ffb66</code>입니다.</p>
 
   <h2>6. 원래 실행 파일로 되돌리기</h2>
   <p>서버를 종료하고 2단계에서 백업한 <code>strata.exe</code>와 <code>strata_kq.dll</code>을 <code>engine</code> 폴더에 다시 복사한 뒤 기존 <code>RUN.bat</code>을 실행합니다. 바이너리 교체 없이 v2만 끄려면 위의 <code>STRATA_PF_V2=0</code>을 사용합니다.</p>
-  <p>소스와 Windows 빌드 기록은 이 매뉴얼을 받은 릴리스 페이지에서 확인할 수 있습니다.</p>
+  <p>소스 변경: <a href="https://github.com/doha-230/Strata/commit/3d3b3d73">3d3b3d73</a>. Windows 빌드: <a href="https://github.com/doha-230/Strata/actions/runs/40240664143">GitHub Actions #40240664143</a>.</p>
 </body>
 </html>

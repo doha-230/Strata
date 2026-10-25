@@ -9,6 +9,7 @@
 | 파일 | 용도 |
 | --- | --- |
 | [Release ZIP](https://github.com/doha-230/Strata/releases/download/v0.1.45-offline-iq3xxs-vision/strata-win-iq3_xxs-vision.zip) | 폐쇄망 PC로 옮겨 압축 해제하는 완성 패키지 |
+| [A6000 sm86 PF 기본 ON 빌드](https://github.com/doha-230/Strata/releases/tag/v0.1.45-sm86-v2-default-on) | 기존 패키지의 엔진만 교체하는 선택형 빌드. A6000 실기기 성능은 미측정 |
 | [압축 전 파일](offline/strata-win-iq3_xxs-vision/) | Git에서 개별 파일을 관리하는 폴더. 큰 파일은 이 저장소의 Git LFS 사용 |
 | [한국어 HTML 설명서](docs/OFFLINE_WINDOWS_IQ3XXS_KO.html) | 파일 위치, 설정 변경, 메모리 사용 및 문제 해결 |
 
