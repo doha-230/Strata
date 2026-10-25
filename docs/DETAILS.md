@@ -28,11 +28,12 @@ argmax run on thread-block clusters (RTX 50, sm_90+; other cards keep the previo
 IQ3 packs about even; on HIP they run on gfx11 and on gfx1200 / gfx1201, see AMD_HIP.md); `STRATA_QSA_CLUSTER=0` / `STRATA_ARGMAX_MULTI=0` turn the decode kernels off. The tables
 below are 0.1.26's.
 
-On CUDA sm_86, `STRATA_PF_FUSED=1` with `STRATA_PF_V2=1` optionally uses Basalt's newer prompt-expert kernels for
-IQ3_XXS gate/up and IQ4_NL down. The existing fused kernels handle other formats and remain the fallback if the v2
-kernels cannot initialize. This is off by default; speed and quality on an RTX A6000 have not been measured.
-Build the engine from this source checkout (`START-HERE.bat --build` on Windows): a downloaded prebuilt engine does not
-contain this change. The log says when v2 starts, or why a requested v2 path falls back to the existing kernels.
+On CUDA sm_86, IQ3_XXS gate/up or IQ4_NL down uses Basalt's newer prompt-expert kernels by default when the fused
+path is available. `STRATA_PF_V2=0` keeps the existing fused kernel; `STRATA_PF_FUSED=0` keeps MMQ. Explicit
+`STRATA_PF_FUSED=1` still enables the other covered native formats. Other GPUs keep their previous defaults. If v2
+cannot initialize, the existing fused kernel is the fallback. Speed and quality on an RTX A6000 have not been measured.
+Build the engine from this source checkout (`START-HERE.bat --build` on Windows), or use the dedicated sm_86 release:
+the older prebuilt engine does not contain this change. The log says when v2 starts or why it falls back.
 
 ### Prompt processing (tokens/s)
 

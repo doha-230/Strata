@@ -35,19 +35,17 @@
     <li>기본 패키지의 <code>engine\strata.exe</code>와 <code>engine\strata_kq.dll</code>을 다른 위치에 복사해 백업합니다.</li>
     <li>이번 빌드 ZIP을 풀고 두 파일을 기본 패키지의 <code>engine</code> 폴더에 복사합니다. 기존 파일을 덮어씁니다. <code>strata-vision.exe</code>, <code>python</code>, <code>models</code>, <code>mtp</code> 폴더는 그대로 둡니다.</li>
   </ol>
-  <p>기본 <code>RUN.bat</code>으로 실행하면 새 바이너리의 기존 경로가 사용됩니다. v2 커널은 아래 두 환경 변수를 지정해야 켜집니다.</p>
+  <p>새 실행 파일을 복사한 뒤 기본 <code>RUN.bat</code>을 실행하면 A6000의 IQ3_XXS gate/up 또는 IQ4_NL down 프롬프트 경로에서 v2 커널이 자동으로 켜집니다. 환경 변수를 추가하거나 실행 스크립트를 고칠 필요가 없습니다.</p>
 
-  <h2>3. v2 커널 켜기</h2>
-  <p>기본 패키지 폴더에서 PowerShell을 열고 다음을 입력합니다.</p>
-  <pre><code>$env:STRATA_PF_FUSED = '1'
-$env:STRATA_PF_V2 = '1'
+  <h2>3. 기본값과 끄는 방법</h2>
+  <p>v2는 sm86에서 IQ3_XXS gate/up 또는 IQ4_NL down을 사용하는 층의 프롬프트 전문가 연산에 기본 적용됩니다. 다른 형식과 다른 GPU의 기본값은 바뀌지 않습니다. 커널 초기화에 실패하면 기존 fused 커널로 돌아갑니다. 생성(decode) 속도 향상을 뜻하는 옵션은 아닙니다.</p>
+  <p>기존 fused 커널과 비교하려면 기본 패키지 폴더의 PowerShell에서 다음처럼 실행합니다.</p>
+  <pre><code>$env:STRATA_PF_V2 = '0'
 .\RUN.bat</code></pre>
-  <p>매번 명령을 입력하기 싫다면 기본 패키지 폴더에 <code>RUN-SM86-V2.bat</code> 파일을 만들고 아래 내용을 넣어 실행합니다.</p>
-  <pre><code>@echo off
-set "STRATA_PF_FUSED=1"
-set "STRATA_PF_V2=1"
-call "%~dp0RUN.bat"</code></pre>
-  <p>v2는 IQ3_XXS gate/up과 IQ4_NL down의 프롬프트 전문가 연산에만 적용됩니다. 실행 파일이 조건을 만족하지 못하면 기존 커널로 돌아갑니다. 생성(decode) 속도 향상을 뜻하는 옵션은 아닙니다.</p>
+  <p>기존 MMQ 경로로 되돌리려면 새 PowerShell 창에서 다음처럼 실행합니다.</p>
+  <pre><code>$env:STRATA_PF_FUSED = '0'
+.\RUN.bat</code></pre>
+  <p>환경 변수는 해당 PowerShell 창에 남습니다. 기본값으로 다시 실행할 때는 새 창을 열거나 <code>Remove-Item Env:STRATA_PF_V2, Env:STRATA_PF_FUSED -ErrorAction SilentlyContinue</code>를 입력합니다.</p>
 
   <h2>4. 128K–256K 입력 설정</h2>
   <p>기본 패키지는 32K 컨텍스트입니다. 실제 128K 또는 256K 입력을 쓰려면 패키지의 <code>prepare.py</code>에서 <code>"--max-context", "32768"</code>을 각각 <code>"--max-context", "131072"</code> 또는 <code>"--max-context", "262144"</code>로 바꾼 뒤 서버를 다시 시작합니다. <code>strata-iq3_xxs.json</code>은 <code>RUN.bat</code>을 실행할 때 다시 생성되므로 직접 수정하지 않습니다.</p>
@@ -57,14 +55,14 @@ call "%~dp0RUN.bat"</code></pre>
   <ol>
     <li><code>http://127.0.0.1:8080/health</code>에서 <code>"loaded": true</code>를 확인합니다.</li>
     <li>IQ3_XXS 모델로 프롬프트 하나를 처리한 뒤 패키지의 <code>strata-iq3_xxs.log</code>를 엽니다.</li>
-    <li><code>strata: prompt experts on v2 IQ kernels (STRATA_PF_V2=1)</code>가 있으면 v2 경로가 사용된 것입니다. <code>unavailable</code> 메시지가 있으면 기존 커널로 대체되었습니다.</li>
+    <li><code>strata: prompt experts on v2 IQ kernels (sm_86)</code>가 있으면 v2 경로가 사용된 것입니다. <code>unavailable</code> 메시지가 있으면 기존 커널로 대체되었습니다.</li>
   </ol>
   <p>Windows PowerShell에서 실행 파일 해시를 확인하려면 다음을 입력합니다.</p>
   <pre><code>Get-FileHash .\engine\strata.exe -Algorithm SHA256</code></pre>
-  <p>이 빌드의 <code>strata.exe</code> SHA-256은 <code>d9d90ad8168dd90d70b2f9bb53a97702758ebad6cf3eb4e8ed9c251dd30d66e9</code>입니다.</p>
+  <p>검사한 SHA-256을 릴리스 페이지의 <code>strata.exe</code> 값과 비교하세요.</p>
 
   <h2>6. 원래 실행 파일로 되돌리기</h2>
-  <p>서버를 종료하고 2단계에서 백업한 <code>strata.exe</code>와 <code>strata_kq.dll</code>을 <code>engine</code> 폴더에 다시 복사한 뒤 기존 <code>RUN.bat</code>을 실행합니다. 바이너리 교체 없이 v2만 끄려면 환경 변수를 설정하지 않고 <code>RUN.bat</code>을 실행하면 됩니다.</p>
-  <p>소스 커밋: <a href="https://github.com/doha-230/Strata/commit/2f710034">2f710034</a>. Windows 빌드: <a href="https://github.com/doha-230/Strata/actions/runs/40223229554">GitHub Actions #40223229554</a>.</p>
+  <p>서버를 종료하고 2단계에서 백업한 <code>strata.exe</code>와 <code>strata_kq.dll</code>을 <code>engine</code> 폴더에 다시 복사한 뒤 기존 <code>RUN.bat</code>을 실행합니다. 바이너리 교체 없이 v2만 끄려면 위의 <code>STRATA_PF_V2=0</code>을 사용합니다.</p>
+  <p>소스와 Windows 빌드 기록은 이 매뉴얼을 받은 릴리스 페이지에서 확인할 수 있습니다.</p>
 </body>
 </html>

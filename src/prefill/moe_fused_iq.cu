@@ -1655,11 +1655,11 @@ void v2_unavailable(const char* reason) {
 bool v2_wanted() {
     const int forced = g_v2_override.load();
     if (forced >= 0) return forced == 1;
-    static const bool env = [] {
+    static const int env = [] {
         const char* v = std::getenv("STRATA_PF_V2");
-        return v != nullptr && v[0] == '1' && v[1] == '\0';
+        return v == nullptr ? -1 : (v[0] == '1' && v[1] == '\0' ? 1 : 0);
     }();
-    return env;
+    return env < 0 ? dev_info().cc == 86 : env == 1;
 }
 int v2_occ() {
 #if defined(__HIPCC__)
@@ -1790,7 +1790,7 @@ bool native_supported(int gu_type, int d_type) {
         return v != nullptr && v[0] == '0';
     }();
     // gfx12: fused::available() (the Q2_0 pack's expert_w11_kernel, not ported) stays false, so requested() does too; the
-    // same opt-in (STRATA_PF_FUSED=1) is read here.  Every other device: requested() as before.
+    // same opt-in (STRATA_PF_FUSED=1) is read here. CUDA sm_86 defaults on only layers touched by v2.
     // unset: on by default on gfx12 for IQ3_S and IQ3_XXS gate/up only (R9700: prompt +13..+20%, first-token KL against the FP16 prompt
     // path equal to MMQ's within noise, 96 prompts each); STRATA_PF_FUSED=0 turns it off, =1 keeps the opt-in for every covered format
     static const int env = [] {
@@ -1798,14 +1798,16 @@ bool native_supported(int gu_type, int d_type) {
         return v == nullptr || v[0] == '\0' ? -1 : (v[0] == '1' ? 1 : 0);
     }();
     if (off || env == 0 || !gu_covered(gu_type)) return false;
-#if !defined(__HIPCC__)
-    if (env < 0) return false;   // the default is gfx12 (HIP) only
-#endif
-    if (env < 0 && gu_type != T_IQ3_S && gu_type != T_IQ3_XXS) return false;   // default: only these two
     const DevInfo& d = dev_info();
     if (!d.ok || !d_covered_on(d_type, d)) return false;
     if (d.t75 && (gu_type != T_Q2_0 || d_type != T_Q2_0)) return false;
-    if (env < 0) return d.w12;
+    if (env < 0) {
+#if defined(__HIPCC__)
+        return d.w12 && (gu_type == T_IQ3_S || gu_type == T_IQ3_XXS);
+#else
+        return d.cc == 86 && (gu_type == T_IQ3_XXS || d_type == T_IQ4_NL);
+#endif
+    }
     return requested() || d.w12;
 }
 
@@ -1917,7 +1919,7 @@ void experts_native(const Batch& b, const NativeGeom& g, int n_expert, int64_t n
         ctr = v2_counters(scratch, n, n_expert);
         ck(cudaMemsetAsync(ctr, 0, 2 * sizeof(int), s), "v2 counters");
         static std::atomic<bool> said{false};
-        if (!said.exchange(true)) std::fprintf(stderr, "strata: prompt experts on v2 IQ kernels (STRATA_PF_V2=1)\n");
+        if (!said.exchange(true)) std::fprintf(stderr, "strata: prompt experts on v2 IQ kernels (sm_86)\n");
     }
     if (v2_gu) {
         const unsigned gr = (unsigned) std::min<int64_t>(tiles * V2<true>::NFB, (int64_t) d.sms * occ2);
