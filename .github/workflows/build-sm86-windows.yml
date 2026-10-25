@@ -1,6 +1,7 @@
 name: Build Windows sm86 engine
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - codex/build-sm86-windows
