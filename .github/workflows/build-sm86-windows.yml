@@ -1,0 +1,46 @@
+name: Build Windows sm86 engine
+
+on:
+  push:
+    branches:
+      - codex/build-sm86-windows
+
+jobs:
+  build:
+    runs-on: windows-2022
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+      - uses: Jimver/cuda-toolkit@v0.2.36
+        id: cuda
+        with:
+          cuda: '13.0.2'
+          method: network
+          sub-packages: '["nvcc", "cudart", "cublas", "cublas_dev", "crt", "nvvm", "nvptxcompiler", "visual_studio_integration"]'
+      - name: Configure
+        shell: pwsh
+        run: |
+          nvcc --version
+          cmake -S . -B build-sm86-windows -G "Visual Studio 17 2022" -A x64 `
+            -DSTRATA_ENABLE_CUDA=ON -DSTRATA_BUILD_TESTS=OFF `
+            -DSTRATA_PORTABLE=ON -DSTRATA_Q6K_EXPERTS=ON `
+            -DSTRATA_MMQ_KQUANTS=ON -DCMAKE_CUDA_ARCHITECTURES=86 `
+            -DCUDAToolkit_ROOT="$env:CUDA_PATH" `
+            -DCMAKE_CUDA_COMPILER="$env:CUDA_PATH\bin\nvcc.exe"
+      - name: Build
+        shell: pwsh
+        run: cmake --build build-sm86-windows --config Release --target strata strata_kq --parallel 2
+      - name: Collect and check PE files
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path artifact | Out-Null
+          Copy-Item build-sm86-windows/Release/strata.exe artifact/
+          Copy-Item build-sm86-windows/Release/strata_kq.dll artifact/
+          python -c "from pathlib import Path; files=list(Path('artifact').glob('*')); assert {p.name for p in files} == {'strata.exe','strata_kq.dll'}; [(print(p.name, p.stat().st_size), print(p.read_bytes()[:2]), p.read_bytes()[:2] == b'MZ' or (_ for _ in ()).throw(AssertionError(p))) for p in files]"
+          Get-FileHash artifact/strata.exe -Algorithm SHA256
+          Get-FileHash artifact/strata_kq.dll -Algorithm SHA256
+      - uses: actions/upload-artifact@v4
+        with:
+          name: strata-windows-sm86-cuda13
+          path: artifact/*
+          if-no-files-found: error

@@ -697,7 +697,8 @@ bool requested() {
 
 size_t act_bytes(int64_t rows, int64_t cols) { return (size_t) rows * (size_t) (cols / 64) * AB; }
 size_t group_bytes(int64_t n, int n_expert) {
-    return tiles_at(n_expert) + ((size_t) (n + kTileRows - 1) / kTileRows + (size_t) n_expert) * sizeof(int2);
+    // The final 64 bytes hold the IQ3_XXS / IQ4_NL v2 work counters.
+    return tiles_at(n_expert) + ((size_t) (n + kTileRows - 1) / kTileRows + (size_t) n_expert) * sizeof(int2) + 64;
 }
 
 void quantize_act(const float* x, int64_t rows, int64_t cols, void* xa, void* stream) {

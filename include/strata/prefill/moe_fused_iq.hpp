@@ -39,4 +39,9 @@ void quantize_act_native(const float* x, int64_t rows, int64_t cols, void* xa, v
 void experts_native(const Batch& b, const NativeGeom& g, int n_expert, int64_t n, const void* scratch, const void* xa,
                     const int32_t* src, void* ha, float* dm, void* stream);
 
+// The optional sm_86 v2 prompt kernels replace IQ3_XXS gate/up and IQ4_NL down only.
+// Tests may force them on/off; -1 restores STRATA_PF_V2 (off by default).
+void native_v2_override(int mode);
+bool native_v2_ready();
+
 }  // namespace strata::prefill::fused

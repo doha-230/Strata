@@ -422,6 +422,34 @@ void reference_part(const Pair& p, cudaStream_t s) {
     }
     if (ef.rms > 1.5 * em.rms || ef.worst > 2.0 * em.worst)
         throw std::runtime_error(std::string(p.name) + ": the fused path's error is not comparable to MMQ's");
+    if (p.gu == GGML_TYPE_IQ3_XXS || p.d == GGML_TYPE_IQ4_NL) {
+        fused::native_v2_override(1);
+        if (fused::native_v2_ready()) {
+            ck(cudaMemset(fb.dm.p, 0xff, (size_t) rows * N * 4), "v2 sentinel");
+            ck(cudaDeviceSynchronize(), "v2 sentinel sync");
+            run_fused(p, geo, fb, x_dev.as<float>(), T, E, {0, 1, 20, E}, blob, s);
+            ck(cudaStreamSynchronize(s), "v2 sync");
+            const std::vector<float> y_v2 = download(fb.dm, (size_t) rows * N);
+            const std::vector<int32_t> slot_v2 = download_i(fb.slot, (size_t) rows);
+            const Err ev = compare(y_v2, [&](size_t i) { return (int64_t) slot_v2[i]; }, ref, pair, (size_t) rows);
+            const Err eold = compare(y_v2, [&](size_t i) { return (int64_t) slot_v2[i]; }, y_f, frow, (size_t) rows);
+            double zero = 0;
+            for (int k = 0; k < K; ++k)
+                for (int o = 0; o < N; ++o)
+                    zero = std::max(zero, (double) std::fabs(y_v2[(size_t) slot_v2[(size_t) (ZERO * K + k)] * N + o]));
+            fused::native_v2_override(0);
+            std::printf("  v2 vs reference: RMS %.3e, worst %.3e; vs fused: RMS %.3e\n", ev.rms, ev.worst, eold.rms);
+            if (zero != 0 || ev.rms > 1.5 * em.rms || ev.worst > 2.0 * em.worst || eold.rms > 0.1 * ef.rms)
+                throw std::runtime_error(std::string(p.name) + ": v2 disagrees with the reference or fused path");
+        } else {
+            int dev = 0, major = 0, minor = 0;
+            ck(cudaGetDevice(&dev), "v2 device");
+            ck(cudaDeviceGetAttribute(&major, cudaDevAttrComputeCapabilityMajor, dev), "v2 major");
+            ck(cudaDeviceGetAttribute(&minor, cudaDevAttrComputeCapabilityMinor, dev), "v2 minor");
+            fused::native_v2_override(0);
+            if (major == 8 && minor == 6) throw std::runtime_error("v2 did not initialize on sm_86");
+        }
+    }
 }
 
 // part 2: one layer at a real chunk, timed
@@ -656,6 +684,7 @@ int main(int argc, char** argv) {
             std::printf("the fused kernels need sm_80 or newer (or gfx11 / gfx12 matrix cores): skipped\n");
             return 77;
         }
+        fused::native_v2_override(0);   // baseline runs use the existing fused kernels, even if STRATA_PF_V2=1
         if (!mmq::built()) { std::printf("no MMQ in this build\n"); return 1; }
         const std::vector<Pair> pairs = {
             {GGML_TYPE_IQ2_S, GGML_TYPE_Q2_0, "IQ2_S / Q2_0"},       {GGML_TYPE_IQ2_XXS, GGML_TYPE_Q2_0, "IQ2_XXS / Q2_0"},
