@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Strata A6000 sm86 v2 빌드 사용자 매뉴얼</title>
+  <title>Strata A6000 sm86 장문 입력·생성 개선 사용자 매뉴얼</title>
   <style>
     body { max-width: 850px; margin: 2rem auto; padding: 0 1.25rem; color: #18283c; background: #fff; font: 16px/1.7 "Malgun Gothic", "Noto Sans KR", sans-serif; }
     h1, h2 { line-height: 1.3; color: #14345f; }
@@ -17,38 +17,39 @@
   </style>
 </head>
 <body>
-  <h1>Strata A6000 sm86 v2 빌드 사용자 매뉴얼</h1>
-  <p>Windows x64, RTX A6000(sm86), Qwen3.8-Flash-Next GSQ-RCO IQ3_XXS용 추가 실행 파일입니다. 기존 <a href="https://github.com/doha-230/Strata/releases/tag/v0.1.45-offline-iq3xxs-vision">폐쇄망 Windows 패키지</a>를 먼저 준비하세요. 모델 설치와 일반 사용법은 패키지 안의 <code>MANUAL.html</code>에 있습니다.</p>
+  <h1>Strata A6000 sm86 장문 입력·생성 개선 사용자 매뉴얼</h1>
+  <p>Windows x64, RTX A6000(sm86), Xeon W-2245, Qwen3.8-Flash-Next GSQ-RCO IQ3_XXS용 업데이트입니다. 기존 <a href="https://github.com/doha-230/Strata/releases/tag/v0.1.45-offline-iq3xxs-vision">폐쇄망 Windows 패키지</a>를 먼저 준비하세요. 모델 설치와 일반 사용법은 패키지 안의 <code>MANUAL.html</code>에 있습니다.</p>
   <p class="notice"><strong>검증 범위:</strong> CUDA 13.0.88과 Visual Studio 2022로 Windows Release 빌드에 성공했고, 실행 파일의 Windows x64 형식과 해시를 확인했습니다. RTX A6000에서 실행·정확도·속도는 아직 측정하지 않았습니다. 성능 향상 수치를 보장하지 않습니다.</p>
 
   <h2>1. 필요한 파일</h2>
   <ul>
     <li><a href="https://github.com/doha-230/Strata/releases/tag/v0.1.45-offline-iq3xxs-vision">기본 패키지</a>: <code>strata-win-iq3_xxs-vision.zip</code>. Python, 이미지 인코더, CUDA 13 라이브러리가 들어 있습니다.</li>
-    <li>이번 빌드: <code>strata-windows-sm86-cuda13.zip</code>. 압축 안의 <code>strata.exe</code>와 <code>strata_kq.dll</code>을 사용합니다.</li>
+    <li><a href="https://github.com/doha-230/Strata/releases/tag/v0.1.45-sm86-decode-cache">이번 업데이트</a>: <code>a6000-w2245-sm86-update.zip</code>. 압축 안의 <code>engine\strata.exe</code>, <code>engine\strata_kq.dll</code>, <code>prepare.py</code>와 32K·128K·256K 실행 파일을 사용합니다.</li>
     <li>원본 GSQ-RCO IQ3_XXS GGUF 두 조각과 NVIDIA 드라이버 580 이상은 기본 패키지 설명서대로 준비합니다.</li>
   </ul>
-  <p>이번 빌드 ZIP만으로는 실행할 수 없습니다. 기존 패키지의 CUDA 13 런타임과 <code>cublas64_13.dll</code> 등이 필요합니다. 이 실행 파일은 sm86 전용이므로 다른 GPU용 기본 실행 파일을 대체하는 용도로 사용하지 마세요.</p>
+  <p>이번 업데이트 ZIP만으로는 실행할 수 없습니다. 기존 패키지의 CUDA 13 런타임과 <code>cublas64_13.dll</code> 등이 필요합니다. 이 실행 파일은 sm86 전용이므로 다른 GPU용 기본 실행 파일을 대체하는 용도로 사용하지 마세요.</p>
 
   <h2>2. 기존 패키지에 적용</h2>
   <ol>
     <li>실행 중인 <code>RUN.bat</code> 창을 닫아 서버를 종료합니다.</li>
     <li>기본 패키지의 <code>engine\strata.exe</code>와 <code>engine\strata_kq.dll</code>을 다른 위치에 복사해 백업합니다.</li>
-    <li>이번 빌드 ZIP을 풀고 두 파일을 기본 패키지의 <code>engine</code> 폴더에 복사합니다. 기존 파일을 덮어씁니다. <code>strata-vision.exe</code>, <code>python</code>, <code>models</code>, <code>mtp</code> 폴더는 그대로 둡니다.</li>
+    <li>이번 업데이트 ZIP을 기본 패키지 폴더에 풀어 <code>engine</code> 폴더의 두 파일, <code>prepare.py</code>와 <code>RUN-*.bat</code>을 덮어씁니다. <code>strata-vision.exe</code>, <code>python</code>, <code>models</code>, <code>mtp</code> 폴더는 그대로 둡니다.</li>
   </ol>
-  <p>새 실행 파일을 복사한 뒤 기본 <code>RUN.bat</code>을 실행하면 A6000의 IQ3_XXS gate/up 또는 IQ4_NL down 프롬프트 경로에서 v2 커널이 자동으로 켜집니다. 환경 변수를 추가하거나 실행 스크립트를 고칠 필요가 없습니다.</p>
+  <p>새 실행 파일을 복사한 뒤 기본 <code>RUN.bat</code>을 실행하면 A6000의 IQ3_XXS gate/up 또는 IQ4_NL down 프롬프트 경로에서 v2 커널이 켜집니다. sm86 생성 경로에는 공식 프로젝트의 9개 성능 설정이 적용됩니다. W-2245 장문 입력에는 체크포인트 분산 설정도 적용됩니다.</p>
 
   <h2>3. 기본값과 끄는 방법</h2>
-  <p>v2는 sm86에서 IQ3_XXS gate/up 또는 IQ4_NL down을 사용하는 층의 프롬프트 전문가 연산에 기본 적용됩니다. 다른 형식과 다른 GPU의 기본값은 바뀌지 않습니다. 커널 초기화에 실패하면 기존 fused 커널로 돌아갑니다. 생성(decode) 속도 향상을 뜻하는 옵션은 아닙니다.</p>
+  <p>v2는 sm86에서 IQ3_XXS gate/up 또는 IQ4_NL down을 사용하는 층의 프롬프트 전문가 연산에 기본 적용됩니다. 커널 초기화에 실패하면 기존 fused 커널로 돌아갑니다. 별도로, sm86 생성 설정은 gate/up과 SwiGLU를 한 CUDA 커널에서 처리하는 경로 등을 켭니다. 사용자 지정 환경 변수는 유지하고, 다른 GPU에는 적용하지 않습니다.</p>
   <p>기존 fused 커널과 비교하려면 기본 패키지 폴더의 PowerShell에서 다음처럼 실행합니다.</p>
   <pre><code>$env:STRATA_PF_V2 = '0'
 .\RUN.bat</code></pre>
   <p>기존 MMQ 경로로 되돌리려면 새 PowerShell 창에서 다음처럼 실행합니다.</p>
   <pre><code>$env:STRATA_PF_FUSED = '0'
 .\RUN.bat</code></pre>
-  <p>환경 변수는 해당 PowerShell 창에 남습니다. 기본값으로 다시 실행할 때는 새 창을 열거나 <code>Remove-Item Env:STRATA_PF_V2, Env:STRATA_PF_FUSED -ErrorAction SilentlyContinue</code>를 입력합니다.</p>
+  <p>생성 경로의 9개 기본 설정만 끄려면 <code>$env:STRATA_SM86_PERF = '0'</code>을 지정한 뒤 <code>.\RUN.bat</code>을 실행합니다. 각 설정을 이미 지정했다면 그 값이 우선합니다.</p>
+  <p>환경 변수는 해당 PowerShell 창에 남습니다. 기본값으로 다시 실행할 때는 새 창을 열거나 <code>Remove-Item Env:STRATA_PF_V2, Env:STRATA_PF_FUSED, Env:STRATA_SM86_PERF -ErrorAction SilentlyContinue</code>를 입력합니다.</p>
 
   <h2>4. 기본 256K와 128K·32K 실행</h2>
-  <p>기존 v0.1.45 릴리스 ZIP의 기본값은 32K입니다. 장문 입력용 오버레이의 <code>prepare.py</code>, <code>RUN-32K.bat</code>, <code>RUN-A6000-128K.bat</code>, <code>RUN-A6000-256K.bat</code>을 기본 패키지 폴더에 복사하세요. 적용 후 <code>RUN.bat</code>은 256K, <code>RUN-A6000-128K.bat</code>은 128K, <code>RUN-32K.bat</code>은 32K로 실행합니다. 소스에서 새로 만든 패키지에는 이 파일들이 포함됩니다.</p>
+  <p>기존 v0.1.45 릴리스 ZIP의 기본값은 32K입니다. 이번 업데이트의 <code>prepare.py</code>, <code>RUN-32K.bat</code>, <code>RUN-A6000-128K.bat</code>, <code>RUN-A6000-256K.bat</code>을 기본 패키지 폴더에 복사하세요. 적용 후 <code>RUN.bat</code>은 256K, <code>RUN-A6000-128K.bat</code>은 128K, <code>RUN-32K.bat</code>은 32K로 실행합니다.</p>
   <p>기본 256K 및 128K 실행은 int8 KV의 GPU 상주 범위를 32K로 제한하는 <code>--kv-resident 32768</code>을 자동 설정합니다. 남은 KV는 RAM에 두어 GPU 전문가 캐시의 공간을 확보합니다. A6000 전용 실행 파일은 Windows에서 전문가 RAM의 고정 영역을 선택적으로 배치하는 <code>STRATA_PIN_BY_NEED=1</code>도 켭니다. <code>strata-iq3_xxs.json</code>은 실행할 때 다시 생성되므로 직접 수정하지 않습니다.</p>
   <p>Windows가 Xeon W-2245와 RTX A6000을 감지하면 입력 처리의 자동 청크 상한을 <code>--prefill auto:32768</code>로 올리고 호스트 스레드를 <code>--host-core last</code>에 둡니다. 128K·256K에서는 <code>--prompt-cache-spread</code>도 켭니다. 앱이 대화 중간을 수정해 다시 보낼 때 이전 체크포인트부터 읽을 수 있으며, 단순히 대화를 이어 쓰는 경우에는 큰 차이가 없습니다. CPU 작업자 수는 물리 코어 자동값을 사용합니다. <code>STRATA_HOST_CORE</code>를 지정하면 해당 값을 우선합니다. 체크포인트 분산만 끄려면 <code>STRATA_PROMPT_CACHE_SPREAD=0</code>, 프로필 전체를 끄려면 <code>STRATA_W2245_TUNE=0</code>을 지정하세요.</p>
   <p>256K는 입력과 출력을 합한 최대 토큰 수입니다. 실제 입력이 256K에 가까우면 출력 분량을 위해 여유를 남겨야 합니다. KV 스트리밍은 약 1.7GiB(128K) 또는 3.4GiB(256K)의 RAM을 사용합니다. A6000에서 속도·정확도는 아직 측정하지 않았으므로 개선율을 보장하지 않습니다.</p>
@@ -59,14 +60,15 @@
     <li><code>http://127.0.0.1:8080/health</code>에서 <code>"loaded": true</code>를 확인합니다.</li>
     <li>IQ3_XXS 모델로 프롬프트 하나를 처리한 뒤 패키지의 <code>strata-iq3_xxs.log</code>를 엽니다.</li>
     <li><code>strata: prompt experts on v2 IQ kernels (sm_86)</code>가 있으면 v2 경로가 사용된 것입니다. <code>unavailable</code> 메시지가 있으면 기존 커널로 대체되었습니다.</li>
-    <li>기본 256K 또는 128K로 실행했다면 같은 로그에서 <code>KV streaming: 32768 of</code>를 확인합니다. <code>strata-iq3_xxs.json</code>의 <code>args</code>에도 <code>--kv-resident</code>가 있어야 합니다.</li>
+    <li><code>strata: sm_86: 9 decode speed switches on by default</code>가 있으면 생성 기본 설정이 적용된 것입니다. 이 문구는 설정 적용 확인이며 실제 성능이나 결괏값 검증은 아닙니다.</li>
+    <li>기본 256K 또는 128K로 실행했다면 같은 로그에서 <code>KV streaming: 32768 of</code>를 확인합니다. <code>strata-iq3_xxs.json</code>의 <code>args</code>에 <code>--kv-resident</code>와 <code>--prompt-cache-spread</code>가 있어야 합니다.</li>
   </ol>
   <p>Windows PowerShell에서 실행 파일 해시를 확인하려면 다음을 입력합니다.</p>
   <pre><code>Get-FileHash .\engine\strata.exe -Algorithm SHA256</code></pre>
-  <p>기본 ON 빌드의 <code>strata.exe</code> SHA-256은 <code>f2302786a8b399d10d8282043ebc518b136fdb21c4da3ee058b76112c58ffb66</code>입니다.</p>
+  <p>이번 빌드의 <code>strata.exe</code> SHA-256은 <code>9e65b429594c647c6d0ccf538e9ff229499fbcabb6d9166f84dbd9c47067d7f7</code>입니다. <code>strata_kq.dll</code> SHA-256은 <code>d15b3f05e441e0d9604acec13ded194437505da75d8e4a860f5bef76b5755955</code>입니다. ZIP 안의 <code>SHA256SUMS.txt</code>로 다른 파일도 확인할 수 있습니다.</p>
 
   <h2>6. 원래 실행 파일로 되돌리기</h2>
   <p>서버를 종료하고 2단계에서 백업한 <code>strata.exe</code>와 <code>strata_kq.dll</code>을 <code>engine</code> 폴더에 다시 복사한 뒤 기존 <code>RUN.bat</code>을 실행합니다. 바이너리 교체 없이 v2만 끄려면 위의 <code>STRATA_PF_V2=0</code>을 사용합니다.</p>
-  <p>소스 변경: <a href="https://github.com/doha-230/Strata/commit/3d3b3d73">3d3b3d73</a>. Windows 빌드: <a href="https://github.com/doha-230/Strata/actions/runs/40240664143">GitHub Actions #40240664143</a>.</p>
+  <p>엔진 소스 변경: <a href="https://github.com/doha-230/Strata/commit/1386a33a">1386a33a</a>. Windows 빌드: <a href="https://github.com/doha-230/Strata/actions/runs/40287150279">GitHub Actions #40287150279</a>.</p>
 </body>
 </html>
