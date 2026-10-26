@@ -1642,6 +1642,29 @@ class SharedPrefix(unittest.TestCase):
         self.assertEqual(req, {"temperature": 0})
         self.assertEqual(ids, self.svc.prepare(self.MSGS, None, {}, 16)[0])
 
+    def test_auto_pin_long_first_document_only_with_later_question(self):
+        self.svc.auto_prefix_min_chars = 100
+        try:
+            req = {}
+            self.svc.prepare(self.MSGS, None, {}, 16, req=req)
+            expected = {"strata_prefix": {"messages": 2}}
+            self.svc.prepare(self.MSGS, None, {}, 16, req=expected)
+            self.assertEqual(req["strata_prefix"], expected["strata_prefix"])
+            self.assertIn(f"pin={req['strata_prefix']['tokens']}", self.keys(**req))
+
+            for messages in (self.MSGS[:2],
+                             [self.MSGS[0], {"role": "user", "content": "short"}, self.MSGS[2]]):
+                req = {}
+                self.svc.prepare(messages, None, {}, 16, req=req)
+                self.assertNotIn("strata_prefix", req)
+
+            for field in (None, {"tokens": 12}):
+                req = {"strata_prefix": field}
+                self.svc.prepare(self.MSGS, None, {}, 16, req=req)
+                self.assertEqual(req["strata_prefix"], field)
+        finally:
+            self.svc.auto_prefix_min_chars = 0
+
 
 class GpuChoice(unittest.TestCase):
     """Issue #51: the config's \"gpu\" reaches the engine as CUDA_VISIBLE_DEVICES, numbered like nvidia-smi."""

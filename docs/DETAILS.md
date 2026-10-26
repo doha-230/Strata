@@ -1098,6 +1098,12 @@ window and ignored, and a malformed field is a 400. One pinned prefix at a time 
 it needs `--prompt-cache 3` or more. `tools/research_run.py` runs a document and a question list against a server with and
 without it. The engine's own key is `pin=N` on the `GEN` line.
 
+The Windows Xeon W-2245 / RTX A6000 IQ3_XXS offline profile sets `auto_prefix_min_chars: 16384`. If the first long
+text-only user document is followed by another user question in the same request, the server marks the end of that
+document automatically. An explicit `strata_prefix` takes precedence; `"strata_prefix": null` disables the automatic
+mark for one request. Other profiles leave it off. This changes prefix reuse during later reads, not token generation
+speed. It has not been timed on the W-2245 / A6000 PC.
+
 **Multiple conversations (opt-in).** Add `--conversation-cache-mib 8192
 --conversation-cache-slots 4` to the engine arguments to park up to four conversations
 in a bounded 8 GiB host-RAM cache. This preserves controller/worker histories when

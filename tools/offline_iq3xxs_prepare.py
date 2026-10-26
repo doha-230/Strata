@@ -184,10 +184,13 @@ def prepare(*, apply_saved: bool = True) -> tuple[dict, str]:
     if tuned_w2245 and os.environ.get("STRATA_PROMPT_CACHE_SPREAD") != "0" and "--kv-resident" in selected_context_args:
         cfg["args"].append("--prompt-cache-spread")
     if tuned_w2245:
+        cfg["auto_prefix_min_chars"] = 16384
+    if tuned_w2245:
         print(f"Xeon W-2245 / RTX A6000 프로필: prefill auto:32768, "
               f"host core {'last' if 'STRATA_HOST_CORE' not in os.environ else '환경변수 설정값'}, "
               "CPU 작업자 수 자동 선택, "
-              f"프롬프트 체크포인트 분산 {'켜짐' if '--prompt-cache-spread' in cfg['args'] else '꺼짐'}.", flush=True)
+              f"프롬프트 체크포인트 분산 {'켜짐' if '--prompt-cache-spread' in cfg['args'] else '꺼짐'}, "
+              "긴 첫 문서 자동 고정 켜짐.", flush=True)
     if apply_saved:
         apply_saved_calibration(cfg, gpu_info)
     CONFIG.write_text(json.dumps(cfg, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")

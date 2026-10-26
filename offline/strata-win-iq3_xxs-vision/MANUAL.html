@@ -169,7 +169,7 @@
         <div class="table-wrap"><table><thead><tr><th>바꾸려는 것</th><th><code>prepare.py</code>에서 찾을 값</th><th>현재 값</th></tr></thead><tbody>
           <tr><th>대화 길이</th><td><code>RUN.bat</code> / <code>STRATA_CONTEXT_TOKENS</code></td><td>기본 256K 토큰, int8 KV 스트리밍</td></tr>
           <tr><th>다른 길이</th><td><code>RUN-32K.bat</code> 또는 <code>RUN-A6000-128K.bat</code></td><td>각각 32K 또는 128K. <code>RUN-A6000-256K.bat</code>은 256K에 Windows 전문가 고정 메모리 최적화도 켭니다.</td></tr>
-          <tr><th>Xeon W-2245 + RTX A6000</th><td>Windows CPU 이름과 GPU 이름을 시작할 때 확인</td><td>입력 청크 상한을 <code>--prefill auto:32768</code>로 높이고 <code>--host-core last</code>로 호스트 스레드를 마지막 물리 코어에 둡니다. 128K·256K에서는 <code>--prompt-cache-spread</code>도 켭니다. 작업자 수는 물리 코어 자동값을 유지합니다.</td></tr>
+          <tr><th>Xeon W-2245 + RTX A6000</th><td>Windows CPU 이름과 GPU 이름을 시작할 때 확인</td><td>입력 청크 상한을 <code>--prefill auto:32768</code>로 높이고 <code>--host-core last</code>로 호스트 스레드를 마지막 물리 코어에 둡니다. 128K·256K에서는 <code>--prompt-cache-spread</code>도 켭니다. 16,384자 이상의 첫 사용자 문서 뒤에 새 질문이 오면 문서 끝을 자동 고정합니다. 작업자 수는 물리 코어 자동값을 유지합니다.</td></tr>
           <tr><th>KV 캐시 형식</th><td><code>"--kv", "int8"</code></td><td>8비트</td></tr>
           <tr><th>MTP 단계</th><td><code>"--spec", "4"</code></td><td>4</td></tr>
           <tr><th>VRAM 예약</th><td><code>"--vram-reserve-mib", "700"</code></td><td>700MiB</td></tr>
@@ -179,6 +179,7 @@
         <p>예: 다른 프로그램을 위해 VRAM을 더 남기려면 <code>"--vram-reserve-mib", "700"</code>을 <code>"--vram-reserve-mib", "2048"</code>로 바꿉니다. 그만큼 GPU 전문가 캐시가 줄 수 있습니다.</p>
         <p><code>prepare.py</code>의 기본 컨텍스트는 262144이며 <code>--kv-resident 32768</code>을 추가합니다. <code>RUN-32K.bat</code>은 KV 스트리밍 없이 32768로 시작합니다. 컨텍스트 상한은 입력과 출력의 합계이며, 256K에 가까운 입력은 출력을 위해 여유가 필요합니다. 기존 릴리스 ZIP에는 이 변경이 없으므로 A6000 업데이트를 적용하거나 새 패키지를 만들어야 합니다. A6000에서의 성능은 아직 측정하지 않았습니다.</p>
         <p>Xeon W-2245 프로필은 Windows의 CPU 이름과 RTX A6000을 모두 확인한 경우에만 켜집니다. <code>auto:32768</code>은 최대 허용 청크이며 엔진이 메모리에 맞는 더 작은 청크를 선택할 수 있습니다. <code>--prompt-cache-spread</code>는 앱이 과거 대화 내용을 수정해 보내는 경우 저장된 지점을 넓게 남겨 재처리량을 줄입니다. 대화를 뒤에만 덧붙이면 효과가 거의 없습니다. 다른 호스트 코어를 쓰려면 <code>STRATA_HOST_CORE</code>를 지정하세요. 체크포인트 분산만 끄려면 <code>STRATA_PROMPT_CACHE_SPREAD=0</code>, 전체 프로필을 끄려면 <code>STRATA_W2245_TUNE=0</code>으로 실행합니다. W-2245 실기기 성능은 아직 측정하지 않았습니다.</p>
+        <p>긴 문서 자동 고정은 텍스트로 된 긴 사용자 메시지 뒤에 별도의 사용자 질문이 있을 때 적용됩니다. 같은 문서를 두고 질문을 바꾸면 문서 시작부터 다시 읽는 양을 줄일 수 있습니다. 문서와 질문을 한 메시지에 넣었다면 앱에서 <code>strata_prefix</code>로 문서 끝을 직접 지정해야 합니다. 요청에 <code>"strata_prefix": null</code>을 넣으면 그 요청에서는 자동 고정하지 않습니다. 답변 생성 속도 자체를 높이는 기능은 아니며 W-2245/A6000에서 향상 폭은 아직 측정하지 않았습니다.</p>
         <p>이번 sm86 엔진은 생성 경로의 9개 성능 설정을 기본 적용합니다. gate/up과 SwiGLU를 한 커널에서 처리하는 경로도 포함됩니다. 기존 설정으로 되돌려 비교하려면 PowerShell에서 <code>$env:STRATA_SM86_PERF='0'</code>을 지정하고 <code>.\RUN.bat</code>을 실행하세요. 이 설정의 RTX A6000 속도와 출력 동일성은 실기기에서 아직 검증하지 않았습니다.</p>
         <p class="note">캘리브레이션을 실행했다면 <code>--pcie-frac</code>, <code>--spec-min-p</code>, <code>--pool-workers</code>는 저장된 측정 결과가 우선합니다. 이 셋을 수동으로 바꾸려면 아래의 캘리브레이션 파일을 지우거나 다시 측정하세요.</p>
         <details><summary>포트 8080을 바꾸고 싶다면</summary><p><code>prepare.py</code>의 <code>"port": 8080</code>과 <code>RUN.bat</code>의 <code>--port 8080</code>을 같은 숫자로 바꿉니다. <code>RUN.bat</code>의 명령줄 값이 서버 실행에 쓰이므로 둘 다 바꿔야 합니다.</p></details>

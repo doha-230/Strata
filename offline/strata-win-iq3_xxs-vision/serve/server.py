@@ -3109,6 +3109,7 @@ class Service:
         self.engine, self.tok, self.template, self.model, self.vision = engine, tokenizer, template, model_name, vision
         self.literals = literal_tags(getattr(tokenizer, "control_tokens", ()))   # texts that stay text inside a message
         self.fit_max_tokens = fit_max_tokens          # --fit-max-tokens: clamp the output cap instead of 400
+        self.auto_prefix_min_chars = 0                 # opt-in: pin a long first user document followed by a question
         self.aliases: list[str] = []                  # #297: other names of the model (the config's `aliases`)
         self.answer_room = True                       # 0.1.45: see ANSWER_ROOM_MIN_CAP (the config's "answer_room": false turns it off)
         self.reasoning_close_retry = False            # #1053 (opt-in): close the thinking once when a reply ends inside it
@@ -4049,8 +4050,22 @@ class Service:
             # (an encoder restart, the cache's eviction) with other bits still matches its checkpoints
             self.embeddings.keys = [Path(p).stem[:16] for p, _ in encoded]
             write_temporary(combined, [p for p, _ in encoded])
-        if req is not None and req.get("strata_prefix") is not None:
-            req["strata_prefix"] = self.resolve_prefix(req["strata_prefix"], messages, tools, kwargs, ids, bool(images))
+        if req is not None:
+            if req.get("strata_prefix") is not None:
+                req["strata_prefix"] = self.resolve_prefix(req["strata_prefix"], messages, tools, kwargs, ids, bool(images))
+            elif "strata_prefix" not in req and self.auto_prefix_min_chars and not images:
+                # Only a separate later user turn makes the first long user message an unambiguous shared document.
+                # Leave explicit fields, including null, to the client. resolve_prefix checks the actual token ids.
+                for i, message in enumerate(messages):
+                    if message.get("role") != "user":
+                        continue
+                    content = message.get("content")
+                    if (isinstance(content, str) and len(content) >= self.auto_prefix_min_chars and
+                            any(later.get("role") == "user" for later in messages[i + 1:])):
+                        prefix = self.resolve_prefix({"messages": i + 1}, messages, tools, kwargs, ids)
+                        if prefix:
+                            req["strata_prefix"] = prefix
+                        break
         return ids, kwargs.get("enable_thinking", True) is not False, max_new
 
     PREFIX_END = "\u0001strata-prefix-end\u0001"          # marks where a message's shared part ends in the rendered prompt
@@ -6951,6 +6966,11 @@ def main() -> int:
     if a.engine == "strata":                            # the model card's sampling when nothing else is said (see MODEL_CARD_SAMPLING)
         svc.model_arch = cfg.get("arch") or "qwen4exp"
     svc.answer_room = cfg.get("answer_room") is not False
+    auto_prefix_min_chars = cfg.get("auto_prefix_min_chars", 0)
+    if (not isinstance(auto_prefix_min_chars, int) or isinstance(auto_prefix_min_chars, bool) or
+            auto_prefix_min_chars < 0):
+        raise SystemExit('[strata] config "auto_prefix_min_chars" must be a nonnegative whole number')
+    svc.auto_prefix_min_chars = auto_prefix_min_chars
     svc.reasoning_close_retry = cfg.get("reasoning_close_retry") is True    # #1053: opt-in, off by default
     if cfg.get("images"):                               # image generation (serve/images.py), set up by setup --images
         icfg = {k: (os.path.abspath(os.path.join(cfg.get("cwd") or ".", v))
