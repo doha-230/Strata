@@ -35,6 +35,14 @@ cannot initialize, the existing fused kernel is the fallback. Speed and quality 
 Build the engine from this source checkout (`START-HERE.bat --build` on Windows), or use the dedicated sm_86 release:
 the older prebuilt engine does not contain this change. The log says when v2 starts or why it falls back.
 
+On CUDA sm_86 this source also applies the upstream nine-switch decode table, including the fused gate/up,
+SwiGLU and q8_1 kernel (`STRATA_GU_SWIGLU=1`); `STRATA_SM86_PERF=0` keeps the previous decode defaults. A setting
+the user supplied is not overwritten. Upstream measured IQ3_XXS decode +10.2% on an RTX 3060 12 GB and +13.0% on an
+RTX A4000 16 GB (eight interleaved pairs each, bit-identical fixed-flag checks); those numbers are not A6000 results.
+See the [upstream release](https://github.com/Niko1221/Strata/releases/tag/v0.2.0-beta). This table is not in the
+older v0.1.45 replacement EXE; it needs an EXE built from this source. On an AVX-512 CPU such as the Xeon W-2245,
+`STRATA_CPU_IQ_ALL_EXACT1` has no CPU-kernel effect because that path is for AVX2 CPUs without AVX-512.
+
 ### Prompt processing (tokens/s)
 
 | Model | 1K | 4K | 32K | 64K | 128K | 262K |

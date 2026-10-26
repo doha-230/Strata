@@ -25,4 +25,9 @@ std::vector<std::pair<std::string, std::string>> arch_default_env(const char* gc
 /// switches (they are read lazily, at first use).
 std::vector<std::string> apply_arch_defaults(const char* gcn_arch);
 
+/// CUDA compute capability 8.6 defaults measured on RTX 3060 and RTX A4000 with IQ3_XXS.
+/// STRATA_SM86_PERF=0 disables the table; user-set switches always win.
+std::vector<std::pair<std::string, std::string>> nv_default_env(int major, int minor);
+std::vector<std::string> apply_nv_defaults(int major, int minor);
+
 }  // namespace strata::core

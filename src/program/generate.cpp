@@ -2646,6 +2646,24 @@ int main(int argc, char** argv) {
         else (void) cudaGetLastError();
     }
 #endif
+#if !defined(STRATA_USE_HIP) && !defined(STRATA_GPU_METAL)
+    {   // Only use the sm86 defaults when every visible CUDA card has the same compute capability.
+        int nd = 0;
+        if (cudaGetDeviceCount(&nd) == cudaSuccess && nd > 0) {
+            int major = 0, minor = 0;
+            bool same = cudaDeviceGetAttribute(&major, cudaDevAttrComputeCapabilityMajor, 0) == cudaSuccess &&
+                        cudaDeviceGetAttribute(&minor, cudaDevAttrComputeCapabilityMinor, 0) == cudaSuccess;
+            for (int d = 1; same && d < nd; ++d) {
+                int m = 0, n = 0;
+                same = cudaDeviceGetAttribute(&m, cudaDevAttrComputeCapabilityMajor, d) == cudaSuccess &&
+                       cudaDeviceGetAttribute(&n, cudaDevAttrComputeCapabilityMinor, d) == cudaSuccess &&
+                       m == major && n == minor;
+            }
+            if (same) strata::core::apply_nv_defaults(major, minor);
+        }
+        (void) cudaGetLastError();
+    }
+#endif
 #if defined(STRATA_USE_HIP) && !defined(_WIN32)
     if (o.prefill_auto_bare && o.prefill_auto_cap == 0) {
         // gfx1200 / gfx1201 (RDNA4, Linux): a bare `--prefill auto` may reach 16384 instead of 8192 (R9700, IQ3_S / Q2_0, 16K / 32K /

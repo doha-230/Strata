@@ -1,6 +1,6 @@
 # Basalt 최적화의 A6000 이식 가능성 조사
 
-조사일: 2026-10-25. 대상: Windows x64, RTX A6000 sm86, Xeon W-2223,
+조사일: 2026-10-25. CPU 모델 정정: 2026-10-26. 대상: Windows x64, RTX A6000 sm86, Xeon W-2245,
 RAM 128 GB, Qwen3.8-Flash-Next GSQ-RCO IQ3_XXS, 실제 입력 128K~256K, 단일 요청.
 
 ## 판단과 조사 범위
@@ -84,7 +84,7 @@ sm86의 블록당 공유 메모리 한도도 고려해야 한다.
 
 ## 사용자 장비에서의 개선 가능성
 
-W-2223이라는 CPU 모델 자체가 기능상 이식 장애는 아니다. CPU worker 수와 CPU/GPU 분담은
+W-2245라는 CPU 모델 자체가 기능상 이식 장애는 아니다. CPU worker 수와 CPU/GPU 분담은
 실측으로 정해야 한다. 긴 입력에서 KV가 자라면 expert의 GPU 상주 공간이 줄어들고,
 CPU miss 처리가 늘 수 있다. 이때 GPU 커널만 빨라져도 전체 속도 개선은 작을 수 있다.
 반대로 expert가 충분히 GPU에 남고 dense/MTP 검증이 큰 비중을 차지하면 이식의 가치가 커진다.

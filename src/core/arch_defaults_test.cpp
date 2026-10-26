@@ -70,6 +70,22 @@ int main() {
     put("STRATA_GFX1151_DEFAULTS", "0");
     CHECK(arch_default_env("gfx1151").empty());
     CHECK(apply_arch_defaults("gfx1151").empty());
+    unset("STRATA_SM86_PERF");
+    for (const char* key : {"STRATA_ADAPT_NOWAIT", "STRATA_ADAPT_LAG", "STRATA_CPU_IQ_ALL_EXACT1", "STRATA_SIDE_MIXER",
+                            "STRATA_ATTN_DAILY", "STRATA_GR_UP75", "STRATA_GU_SWIGLU", "STRATA_QSA_ROWS",
+                            "STRATA_B6_MMVQ_ROWS"}) unset(key);
+    CHECK(nv_default_env(8, 6).size() == 9);
+    CHECK(nv_default_env(8, 9).empty());
+    CHECK(nv_default_env(12, 0).empty());
+    put("STRATA_GU_SWIGLU", "0");
+    unset("STRATA_ADAPT_NOWAIT");
+    const auto nv_set = apply_nv_defaults(8, 6);
+    CHECK(std::string(std::getenv("STRATA_GU_SWIGLU")) == "0");
+    CHECK(std::string(std::getenv("STRATA_ADAPT_NOWAIT")) == "1");
+    CHECK(nv_set.size() == 8);
+    put("STRATA_SM86_PERF", "0");
+    CHECK(nv_default_env(8, 6).empty());
+    CHECK(apply_nv_defaults(8, 6).empty());
     std::printf(fails ? "arch_defaults_test: %d FAILED\n" : "arch_defaults_test: OK\n", fails);
     return fails ? 1 : 0;
 }

@@ -82,4 +82,43 @@ std::vector<std::string> apply_arch_defaults(const char* gcn_arch) {
     return set;
 }
 
+std::vector<std::pair<std::string, std::string>> nv_default_env(int major, int minor) {
+    if (major != 8 || minor != 6) return {};
+    const char* off = std::getenv("STRATA_SM86_PERF");
+    if (off != nullptr && off[0] == '0') return {};
+    // Upstream 148-nv: IQ3_XXS decode on RTX 3060 / RTX A4000, 8/8 pairs,
+    // +10.2% / +13.0% with the whole stack. A6000 has not been measured.
+    return {
+        {"STRATA_ADAPT_NOWAIT", "1"},
+        {"STRATA_ADAPT_LAG", "2"},
+        {"STRATA_CPU_IQ_ALL_EXACT1", "1"},
+        {"STRATA_SIDE_MIXER", "2"},
+        {"STRATA_ATTN_DAILY", "1"},
+        {"STRATA_GR_UP75", "1"},
+        {"STRATA_GU_SWIGLU", "1"},
+        {"STRATA_QSA_ROWS", "1"},
+        {"STRATA_B6_MMVQ_ROWS", "1"},
+    };
+}
+
+std::vector<std::string> apply_nv_defaults(int major, int minor) {
+    std::vector<std::string> set;
+    for (const auto& kv : nv_default_env(major, minor)) {
+        if (std::getenv(kv.first.c_str()) != nullptr) continue;
+#if defined(_WIN32)
+        _putenv_s(kv.first.c_str(), kv.second.c_str());
+#else
+        setenv(kv.first.c_str(), kv.second.c_str(), 0);
+#endif
+        set.push_back(kv.first);
+    }
+    if (!set.empty()) {
+        std::fprintf(stderr, "strata: sm_86: %zu decode speed switches on by default "
+                             "(STRATA_SM86_PERF=0 turns them off; user settings kept): ", set.size());
+        for (size_t i = 0; i < set.size(); ++i) std::fprintf(stderr, "%s%s", i ? " " : "", set[i].c_str() + 7);
+        std::fprintf(stderr, "\n");
+    }
+    return set;
+}
+
 }  // namespace strata::core

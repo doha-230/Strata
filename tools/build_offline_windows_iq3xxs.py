@@ -134,6 +134,9 @@ def main() -> None:
     shutil.copy2(ROOT / "LICENSE", STAGE / "STRATA-LICENSE.txt")
     shutil.copy2(ROOT / "tools" / "offline_iq3xxs_prepare.py", STAGE / "prepare.py")
     for src, name in (("offline_iq3xxs_run.bat", "RUN.bat"),
+                      ("offline_iq3xxs_run_32k.bat", "RUN-32K.bat"),
+                      ("offline_iq3xxs_run_a6000_128k.bat", "RUN-A6000-128K.bat"),
+                      ("offline_iq3xxs_run_a6000_256k.bat", "RUN-A6000-256K.bat"),
                       ("offline_iq3xxs_calibrate.bat", "CALIBRATE.bat")):
         dst = STAGE / name
         shutil.copy2(ROOT / "tools" / src, dst)
@@ -146,7 +149,8 @@ def main() -> None:
                  models_dir / "mmproj-Qwen3.8-Flash-Next-BF16.gguf",
                  STAGE / "mtp" / "rt" / "experts.bin", STAGE / "mtp" / "rt" / "dense.bin",
                  py_dir / "python.exe", site / "nvidia" / "cu13" / "bin" / "x86_64" / "cublas64_13.dll",
-                 STAGE / "MANUAL.html", STAGE / "prepare.py", STAGE / "RUN.bat", STAGE / "CALIBRATE.bat"]
+                 STAGE / "MANUAL.html", STAGE / "prepare.py", STAGE / "RUN.bat", STAGE / "RUN-32K.bat",
+                 STAGE / "RUN-A6000-128K.bat", STAGE / "RUN-A6000-256K.bat", STAGE / "CALIBRATE.bat"]
     checksums = [f"{hashlib.sha256(p.read_bytes()).hexdigest()}  {p.relative_to(STAGE).as_posix()}"
                  for p in important]
     (STAGE / "SHA256SUMS.txt").write_text("\n".join(checksums) + "\n", encoding="utf-8")

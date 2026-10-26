@@ -42,7 +42,13 @@ ZIP SHA-256: `886e7bb1a8df50ac95051ab7f29b4bb66a5b7c312252fe36fcd0d006c25376b2` 
 
 3. `RUN.bat`을 실행합니다. 첫 실행에서는 GGUF를 검사하고 Strata pack과 토크나이저를 만듭니다. 완료 후 `http://127.0.0.1:8080/health`에서 `"loaded": true`와 `"images": true`를 확인하고, `http://127.0.0.1:8080`에서 사용합니다.
 
-기본 설정은 32K 컨텍스트, int8 KV 캐시, GPU 이미지 입력, MTP `--spec 4`, GPU 0번, 로컬 주소 `127.0.0.1:8080`입니다. 다른 PC에서 서버에 접속하도록 변경할 때는 반드시 API 키를 설정하세요. 설정은 `prepare.py`에서 고칩니다. `RUN.bat`이 시작할 때마다 `strata-iq3_xxs.json`을 다시 만들기 때문입니다. 자세한 값과 변경 방법은 [HTML 설명서](docs/OFFLINE_WINDOWS_IQ3XXS_KO.html)에 있습니다.
+현재 소스 또는 장문 오버레이를 적용한 패키지의 기본 설정은 256K 컨텍스트, int8 KV 스트리밍(`--kv-resident 32768`), GPU 이미지 입력, MTP `--spec 4`, GPU 0번, 로컬 주소 `127.0.0.1:8080`입니다. 기존 v0.1.45 릴리스 ZIP 자체는 32K입니다. 다른 PC에서 서버에 접속하도록 변경할 때는 반드시 API 키를 설정하세요. 설정은 `prepare.py`에서 고칩니다. `RUN.bat`이 시작할 때마다 `strata-iq3_xxs.json`을 다시 만들기 때문입니다. 자세한 값과 변경 방법은 [HTML 설명서](docs/OFFLINE_WINDOWS_IQ3XXS_KO.html)에 있습니다.
+
+현재 소스에서 패키지를 새로 만들면 `RUN-32K.bat`, `RUN-A6000-128K.bat`, `RUN-A6000-256K.bat`도 들어갑니다. 128K·256K 실행은 int8 KV를 RAM으로 스트리밍하고 GPU에는 32K만 두어 전문가 캐시 공간을 확보합니다. A6000 전용 실행 파일은 `STRATA_PIN_BY_NEED=1`도 켭니다. 기존 v0.1.45 릴리스 ZIP에는 이 실행 파일이 없으므로 작은 오버레이를 별도로 적용해야 합니다. A6000 실기기 속도는 아직 측정하지 않았습니다.
+
+Windows에서 Xeon W-2245와 RTX A6000이 함께 확인되면 `prepare.py`가 긴 입력용 `--prefill auto:32768`과 `--host-core last`를 자동 적용합니다. 128K·256K에서는 `--prompt-cache-spread`도 켜서 앱이 예전 메시지를 수정한 뒤 다시 보낼 때 대화 전체를 다시 읽는 일을 줄입니다. CPU 작업자 수는 엔진의 물리 코어 자동 선택을 유지합니다. `STRATA_HOST_CORE`를 직접 지정했다면 그 값을 우선하고, 체크포인트 분산만 끄려면 `STRATA_PROMPT_CACHE_SPREAD=0`, 프로필 전체를 끄려면 `STRATA_W2245_TUNE=0`으로 실행하세요. 이 PC의 속도 개선 폭은 측정되지 않았습니다.
+
+새로 빌드한 sm86 전용 엔진은 공식 Strata의 9개 sm86 생성 설정과 누락됐던 gate/up·SwiGLU 결합 커널도 포함합니다. `STRATA_SM86_PERF=0`으로 생성 설정을 끌 수 있습니다. 기존 v0.1.45 sm86 v2 교체 EXE에는 이 생성 경로가 들어 있지 않으며, RTX A6000에서 생성 속도는 아직 측정되지 않았습니다.
 
 ## 자동 캘리브레이션
 

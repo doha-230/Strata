@@ -6,6 +6,7 @@ import json
 import math
 import os
 import platform
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -22,6 +23,40 @@ MTP = ROOT / "mtp" / "rt"
 CONFIG = ROOT / "strata-iq3_xxs.json"
 CALIBRATION = ROOT / "calibration-iq3_xxs.json"
 TUNED_FLAGS = {"--pcie-frac", "--spec-min-p", "--pool-workers"}
+CONTEXT_CHOICES = {32768, 131072, 262144}
+
+
+def windows_cpu_name() -> str:
+    """Read the marketing name; PROCESSOR_IDENTIFIER only contains family/model IDs."""
+    if platform.system() != "Windows":
+        return ""
+    try:
+        import winreg
+        with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE,
+                            r"HARDWARE\DESCRIPTION\System\CentralProcessor\0") as key:
+            return str(winreg.QueryValueEx(key, "ProcessorNameString")[0])
+    except (OSError, ImportError):
+        return ""
+
+
+def w2245_profile(cpu_name: str, gpu_info: str) -> bool:
+    """Select the long-prompt profile only for the intended Windows A6000 PC."""
+    first_gpu = gpu_info.splitlines()[0].split(",", 1)[0] if gpu_info else ""
+    return (os.environ.get("STRATA_W2245_TUNE") != "0"
+            and re.search(r"\bXeon\b.*\bW-2245\b", cpu_name, re.IGNORECASE) is not None
+            and "RTX A6000" in first_gpu.upper())
+
+
+def context_args() -> list[str]:
+    """Keep long-context KV from displacing the GPU expert cache."""
+    raw = os.environ.get("STRATA_CONTEXT_TOKENS", "262144")
+    if not raw.isdecimal() or int(raw) not in CONTEXT_CHOICES:
+        raise ValueError("STRATA_CONTEXT_TOKENS는 32768, 131072, 262144 중 하나여야 합니다")
+    context = int(raw)
+    args = ["--max-context", str(context), "--kv", "int8"]
+    if context > 32768:
+        args += ["--kv-resident", "32768"]
+    return args
 
 
 def check_files() -> tuple[GGUFFile, GGUFFile]:
@@ -67,7 +102,7 @@ def calibration_key(cfg: dict, gpu_info: str) -> dict:
     args = cfg["args"]
     values = {}
     for flag in ("--expert-cache", "--prefill", "--spec", "--max-context", "--kv",
-                 "--vram-reserve-mib"):
+                 "--kv-resident", "--vram-reserve-mib"):
         if flag in args:
             values[flag] = args[args.index(flag) + 1]
     values["--vision"] = "--vision" in args
@@ -119,7 +154,10 @@ def apply_saved_calibration(cfg: dict, gpu_info: str) -> None:
 
 
 def prepare(*, apply_saved: bool = True) -> tuple[dict, str]:
+    selected_context_args = context_args()
     gpu_info = check_driver()
+    cpu_name = windows_cpu_name()
+    tuned_w2245 = w2245_profile(cpu_name, gpu_info)
     check_files()
     if not (PACK / "native_experts.txt").exists() or not (PACK / "tokenizer" / "vocab.json").exists():
         print("GGUF에서 Strata pack과 토크나이저를 준비합니다 ...", flush=True)
@@ -132,19 +170,30 @@ def prepare(*, apply_saved: bool = True) -> tuple[dict, str]:
         "exe": str(ROOT / "engine" / "strata.exe"),
         "args": ["--pack", str(PACK), "--native", str(SHARDS[0]),
                  "--ple-gguf", str(SHARDS[1]), "--expert-profile", str(ROOT / "data" / "expert-profile.bin"),
-                 "--expert-cache", "auto", "--prefill", "auto", "--spec", "4", "--spec-min-p", "0.5",
-                 "--mtp", str(MTP), "--max-context", "32768", "--kv", "int8",
-                 "--vision", "--vram-reserve-mib", "700"],
+                 "--expert-cache", "auto", "--prefill", "auto:32768" if tuned_w2245 else "auto",
+                 "--spec", "4", "--spec-min-p", "0.5",
+                 "--mtp", str(MTP), *selected_context_args, "--vision", "--vram-reserve-mib", "700"],
         "cwd": str(ROOT), "tokenizer": str(PACK / "tokenizer"),
         "model_name": "qwen3.8-flash-next-iq3_xxs", "log": str(ROOT / "strata-iq3_xxs.log"),
         "lib_dirs": [str(cuda_dir)], "gpu": 0, "port": 8080, "host": "127.0.0.1",
         "vision": {"exe": str(ROOT / "engine" / "strata-vision.exe"), "mmproj": str(MMPROJ),
                    "model": str(SHARDS[0]), "gpu": True, "max_tokens": 1024},
     }
+    if tuned_w2245 and "STRATA_HOST_CORE" not in os.environ:
+        cfg["args"] += ["--host-core", "last"]
+    if tuned_w2245 and os.environ.get("STRATA_PROMPT_CACHE_SPREAD") != "0" and "--kv-resident" in selected_context_args:
+        cfg["args"].append("--prompt-cache-spread")
+    if tuned_w2245:
+        print(f"Xeon W-2245 / RTX A6000 프로필: prefill auto:32768, "
+              f"host core {'last' if 'STRATA_HOST_CORE' not in os.environ else '환경변수 설정값'}, "
+              "CPU 작업자 수 자동 선택, "
+              f"프롬프트 체크포인트 분산 {'켜짐' if '--prompt-cache-spread' in cfg['args'] else '꺼짐'}.", flush=True)
     if apply_saved:
         apply_saved_calibration(cfg, gpu_info)
     CONFIG.write_text(json.dumps(cfg, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-    print("오프라인 준비 완료. 이미지 입력과 MTP가 활성화되었습니다.", flush=True)
+    print("오프라인 준비 완료. 이미지 입력과 MTP가 활성화되었습니다. "
+          f"컨텍스트 {cfg['args'][cfg['args'].index('--max-context') + 1]} 토큰" +
+          (", KV 스트리밍 32768 토큰." if "--kv-resident" in cfg["args"] else "."), flush=True)
     return cfg, gpu_info
 
 
