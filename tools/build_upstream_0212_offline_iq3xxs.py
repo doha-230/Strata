@@ -18,7 +18,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 DIST = ROOT / "dist"
 CACHE = DIST / "downloads"
-NAME = "strata-win-original-v0.2.12-iq3_xxs-256k-dual"
+NAME = "strata-win-original-v0.2.12-iq3_xxs-256k-dflash2"
 STAGE = DIST / NAME
 SOURCE = DIST / "upstream-v0.2.12-source"
 UPSTREAM_URL = "https://github.com/Niko1221/Strata.git"
@@ -141,6 +141,7 @@ def build() -> Path:
     python = fetch(PYTHON_URL, CACHE / "python-embed.zip", PYTHON_SHA)
     mmproj = fetch(MMPROJ_URL, CACHE / "mmproj.gguf", MMPROJ_SHA)
     pinned_source()
+    dflash_pack = build_dflash2_pack()
     shutil.rmtree(STAGE, ignore_errors=True)
     STAGE.mkdir(parents=True)
     for folder in ("serve", "strata_control", "tools", "data"):
@@ -152,15 +153,16 @@ def build() -> Path:
     models = STAGE / "models"
     models.mkdir()
     shutil.copy2(mmproj, models / "mmproj-Qwen3.8-Flash-Next-BF16.gguf")
-    mtp = STAGE / "mtp" / "rt"
-    mtp.mkdir(parents=True)
-    old_mtp = ROOT / "offline" / "strata-win-iq3_xxs-vision" / "mtp" / "rt"
-    for name, digest in MTP_FILES.items():
-        src = old_mtp / name
-        if sha256(src) != digest:
-            raise RuntimeError(f"MTP runtime differs: {name}")
-        shutil.copy2(src, mtp / name)
-    shutil.copy2(SOURCE / "data" / "draft_vocab.bin", mtp / "draft_vocab.bin")
+    dflash = STAGE / "dflash2"
+    dflash.mkdir()
+    shutil.copy2(dflash_pack, dflash / DFLASH_PACK_NAME)
+    shutil.copy2(SOURCE / "data" / "dflash2-tuned" / "LICENSE", dflash / "LICENSE")
+    attribution = {"source": DFLASH_REPO, "revision": DFLASH_REVISION,
+                   "source_safetensors_sha256": DFLASH_WEIGHTS_SHA,
+                   "conversion": "original Strata v0.2.12 tools/dflash2_pack.py --q4_0",
+                   "pack_name": DFLASH_PACK_NAME, "pack_bytes": DFLASH_PACK_BYTES,
+                   "pack_sha256": DFLASH_PACK_SHA, "license": "Apache-2.0"}
+    (dflash / "SOURCE.json").write_text(json.dumps(attribution, indent=2) + "\n", encoding="utf-8")
     packaged = ROOT / "packaging" / "offline_iq3xxs_0212"
     shutil.copy2(packaged / "prepare.py", STAGE / "prepare.py")
     shutil.copy2(packaged / "MANUAL.html", STAGE / "MANUAL.html")
@@ -174,16 +176,16 @@ def build() -> Path:
                   "python_embed_sha256": PYTHON_SHA, "mmproj_sha256": MMPROJ_SHA,
                   "model": "Qwen3.8-Flash-Next-GSQ-RCO-IQ3_XXS", "context_tokens": 262144,
                   "main_model_gguf_included": False,
-                  "dflash2_pack_in_separate_release_zip": True,
-                  "mtp_runtime": "v0.2.12 tools/mtp_rt.py reproduced the included v0.1.45 runtime files byte-for-byte"}
+                  "default_drafter": "dflash2", "dflash2_pack_sha256": DFLASH_PACK_SHA,
+                  "mtp_runtime_in_separate_release_zip": True}
     (STAGE / "SOURCE.json").write_text(json.dumps(provenance, indent=2) + "\n", encoding="utf-8")
     important = [STAGE / "engine" / name for name in
                  ("strata.exe", "strata-vision.exe", "strata_kq.dll", "cublas64_13.dll", "cublasLt64_13.dll",
                   "BUILD.json", "engine-component.json")]
     important += [STAGE / name for name in ("prepare.py", "RUN.bat", "RUN-MTP.bat", "RUN-DFLASH2.bat", "MANUAL.html", "SOURCE.json",
                                                  "serve/server.py", "tools/iq_pack.py", "strata_control/drafting.py",
-                                                 "mtp/rt/experts.bin", "mtp/rt/dense.bin", "mtp/rt/dense.txt",
-                                                 "mtp/rt/draft_vocab.bin", "models/mmproj-Qwen3.8-Flash-Next-BF16.gguf",
+                                                 "dflash2/qwen3.8-flash-next-dflash2.q4_0.pack", "dflash2/SOURCE.json",
+                                                 "models/mmproj-Qwen3.8-Flash-Next-BF16.gguf",
                                                  "python/python.exe")]
     (STAGE / "SHA256SUMS.txt").write_text(
         "".join(f"{sha256(path)}  {path.relative_to(STAGE).as_posix()}\n" for path in important), encoding="utf-8")
@@ -201,8 +203,8 @@ def build() -> Path:
     return out
 
 
-def build_dflash2() -> Path:
-    """A second ZIP merges into the base folder and stays below GitHub's per-asset limit."""
+def build_dflash2_pack() -> Path:
+    """Make the exact DFlash2 pack pinned by the original v0.2.12 source."""
     base = f"{DFLASH_REPO}/resolve/{DFLASH_REVISION}"
     config = fetch(f"{base}/config.json", CACHE / "dflash2-config.json", DFLASH_CONFIG_SHA)
     weights = fetch(f"{base}/model.safetensors", CACHE / "dflash2-model.safetensors", DFLASH_WEIGHTS_SHA)
@@ -213,25 +215,34 @@ def build_dflash2() -> Path:
                         str(weights), str(config), str(pack), "--q4_0"], check=True)
     if pack.stat().st_size != DFLASH_PACK_BYTES or sha256(pack) != DFLASH_PACK_SHA:
         raise RuntimeError("DFlash2 pack does not match the original v0.2.12 pinned result")
-    addon = DIST / f"{NAME}-dflash2.zip"
-    attribution = {"source": DFLASH_REPO, "revision": DFLASH_REVISION,
-                   "source_safetensors_sha256": DFLASH_WEIGHTS_SHA,
-                   "conversion": "original Strata v0.2.12 tools/dflash2_pack.py --q4_0",
-                   "pack_name": DFLASH_PACK_NAME, "pack_bytes": DFLASH_PACK_BYTES,
-                   "pack_sha256": DFLASH_PACK_SHA, "license": "Apache-2.0"}
+    return pack
+
+
+def build_mtp_addon() -> Path:
+    """Put the optional MTP layer in a ZIP that merges with the DFlash2-default folder."""
+    old_mtp = ROOT / "offline" / "strata-win-iq3_xxs-vision" / "mtp" / "rt"
+    for name, digest in MTP_FILES.items():
+        if sha256(old_mtp / name) != digest:
+            raise RuntimeError(f"MTP runtime differs: {name}")
+    addon = DIST / f"{NAME}-mtp.zip"
+    folder = Path(NAME) / "mtp" / "rt"
+    provenance = {"origin": "v0.1.45 offline package MTP runtime",
+                  "verification": "original v0.2.12 tools/mtp_rt.py reproduced experts.bin, dense.bin and dense.txt byte-for-byte",
+                  "files_sha256": MTP_FILES}
     print(f"Writing {addon} ...", flush=True)
     with zipfile.ZipFile(addon, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=1, allowZip64=True) as z:
-        z.write(pack, Path(NAME) / "dflash2" / DFLASH_PACK_NAME)
-        z.write(SOURCE / "data" / "dflash2-tuned" / "LICENSE", Path(NAME) / "dflash2" / "LICENSE")
-        z.writestr(str(Path(NAME) / "dflash2" / "SOURCE.json"), json.dumps(attribution, indent=2) + "\n")
+        for name in MTP_FILES:
+            z.write(old_mtp / name, folder / name)
+        z.write(SOURCE / "data" / "draft_vocab.bin", folder / "draft_vocab.bin")
+        z.writestr(str(Path(NAME) / "mtp" / "SOURCE.json"), json.dumps(provenance, indent=2) + "\n")
     with zipfile.ZipFile(addon) as z:
         bad = z.testzip()
         if bad is not None:
-            raise RuntimeError(f"DFlash2 ZIP CRC failed: {bad}")
+            raise RuntimeError(f"MTP ZIP CRC failed: {bad}")
     print(f"Ready: {addon} ({addon.stat().st_size:,} bytes; SHA-256 {sha256(addon)})", flush=True)
     return addon
 
 
 if __name__ == "__main__":
     build()
-    build_dflash2()
+    build_mtp_addon()

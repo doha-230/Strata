@@ -2,7 +2,7 @@
 setlocal
 chcp 65001 >nul
 cd /d "%~dp0"
-"%~dp0python\python.exe" "%~dp0prepare.py"
+"%~dp0python\python.exe" "%~dp0prepare.py" --drafter dflash2
 if errorlevel 1 goto failed
 "%~dp0python\python.exe" "%~dp0serve\server.py" --engine strata --config "%~dp0strata-iq3_xxs.json" --offline --port 8080 --open
 if errorlevel 1 goto failed

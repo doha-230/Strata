@@ -59,13 +59,16 @@ def check_dflash_pack() -> None:
         raise RuntimeError("DFlash2 pack SHA-256이 원본 v0.2.12의 고정값과 다릅니다.")
 
 
-def check_files(drafter: str = "mtp") -> None:
+def check_files(drafter: str = "dflash2") -> None:
     required = [ROOT / "engine" / "strata.exe", ROOT / "engine" / "strata-vision.exe",
                 ROOT / "engine" / "cublas64_13.dll", ROOT / "engine" / "cublasLt64_13.dll",
-                ROOT / "data" / "expert-profile.bin", MTP / "experts.bin", MTP / "dense.bin",
-                MTP / "dense.txt", MTP / "draft_vocab.bin", MMPROJ, *SHARDS]
+                ROOT / "data" / "expert-profile.bin", ROOT / "data" / "draft_vocab.bin", MMPROJ, *SHARDS]
+    if drafter == "mtp":
+        required += [MTP / name for name in ("experts.bin", "dense.bin", "dense.txt", "draft_vocab.bin")]
     for path in required:
         if not path.is_file():
+            if drafter == "mtp" and path.parent == MTP:
+                raise RuntimeError("MTP 파일이 없습니다. 릴리스의 MTP 추가 ZIP을 같은 폴더에 풀어 주세요.")
             raise RuntimeError(f"필요한 파일이 없습니다: {path}")
     build = json.loads((ROOT / "engine" / "BUILD.json").read_text(encoding="utf-8-sig"))
     if build.get("version") != ENGINE_VERSION or 86 not in build.get("archs", []):
@@ -88,7 +91,7 @@ def check_files(drafter: str = "mtp") -> None:
         check_dflash_pack()
 
 
-def prepare(drafter: str = "mtp") -> dict:
+def prepare(drafter: str = "dflash2") -> dict:
     if drafter not in ("mtp", "dflash2"):
         raise ValueError(f"지원하지 않는 생성 보조 방식: {drafter}")
     check_driver()
@@ -119,7 +122,7 @@ def prepare(drafter: str = "mtp") -> dict:
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="원본 Strata v0.2.12 폐쇄망 실행 설정")
-    parser.add_argument("--drafter", choices=("mtp", "dflash2"), default="mtp")
+    parser.add_argument("--drafter", choices=("mtp", "dflash2"), default="dflash2")
     options = parser.parse_args()
     try:
         prepare(options.drafter)
