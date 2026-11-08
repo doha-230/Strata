@@ -1,5 +1,9 @@
 # Strata: 폐쇄망 Windows 배포판
 
+## 원본 v0.2.12 기반 새 패키지
+
+RTX A6000, Windows, Qwen3.8-Flash-Next GSQ-RCO IQ3_XXS와 256K 컨텍스트용으로 [원본 v0.2.12 기반 패키지](docs/releases/v0.2.12-offline-iq3xxs-256k.md)를 새로 만들었습니다. 원본 Windows CUDA 13 엔진 0.1.58, 원본 서버·도구, Python과 필요한 라이브러리, 이미지 인코더, MTP 파일을 함께 담았습니다. 메인 GGUF 두 조각과 NVIDIA 드라이버는 별도로 준비해야 합니다. 이 패키지는 아래 v0.1.45 포크 패키지와 별개의 새 폴더에서 실행합니다.
+
 이 저장소는 [원본 Strata v0.1.45](https://github.com/Niko1221/Strata/releases/tag/v0.1.45)를 기반으로 합니다. Windows PC에서 **Qwen3.8-Flash-Next GSQ-RCO IQ3_XXS**를 인터넷 연결 없이 실행할 수 있도록 패키지를 제공합니다. GPU 이미지 입력과 MTP를 기본으로 켰습니다.
 
 실행에 필요한 Windows 엔진, Python, CUDA 런타임, 이미지 인코더와 `mmproj`, MTP 가중치는 포함했습니다. **메인 LLM GGUF 두 조각과 NVIDIA 시스템 드라이버는 포함하지 않았습니다.** 패키지는 압축 무결성을 확인했지만, Windows 실기기 실행은 아직 검증하지 못했습니다.
