@@ -18,7 +18,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 DIST = ROOT / "dist"
 CACHE = DIST / "downloads"
-NAME = "strata-win-original-v0.2.12-iq3_xxs-256k"
+NAME = "strata-win-original-v0.2.12-iq3_xxs-256k-dual"
 STAGE = DIST / NAME
 SOURCE = DIST / "upstream-v0.2.12-source"
 UPSTREAM_URL = "https://github.com/Niko1221/Strata.git"
@@ -33,6 +33,13 @@ MMPROJ_URL = ("https://huggingface.co/ISTA-DASLab/Qwen3.8-Flash-Next-GSQ-RCO-GGU
               "resolve/ed59f92082b1e93c0e96d60a8b11aab089b52f09/"
               "mmproj-Qwen3.8-Flash-Next-BF16.gguf")
 MMPROJ_SHA = "b1a82259702816a5330d7bd7607cd9676b11780e79ff7348c21103ff3ce49bd0"
+DFLASH_REPO = "https://huggingface.co/incoai/Qwen3.8-Flash-Next-DFlash2"
+DFLASH_REVISION = "a22a1744e85c17364dcc54a6a420af7135d4c7f6"
+DFLASH_CONFIG_SHA = "2409575986f9ea24d455343eb469c0e6940def5edab1d1be503bb8eb4cc3b1b9"
+DFLASH_WEIGHTS_SHA = "d6723f2a359eaf33ec0c95f22ae8edda896774020c552296a85e1913b4d3186f"
+DFLASH_PACK_NAME = "qwen3.8-flash-next-dflash2.q4_0.pack"
+DFLASH_PACK_BYTES = 522458112
+DFLASH_PACK_SHA = "cda40d62d0eb8f37ed6e272142641a1d2f0de4a32f9e14d0416e7a71534849f1"
 MTP_FILES = {
     "experts.bin": "09398406be61f1f54c93861f449e48b8df0bfccbc9ec9b2b7636775a6ea9244f",
     "dense.bin": "c724dc0b0822ada5d2977bf5bde821605feabaa64ea2e0045b67ca656329070a",
@@ -157,8 +164,9 @@ def build() -> Path:
     packaged = ROOT / "packaging" / "offline_iq3xxs_0212"
     shutil.copy2(packaged / "prepare.py", STAGE / "prepare.py")
     shutil.copy2(packaged / "MANUAL.html", STAGE / "MANUAL.html")
-    run = (packaged / "RUN.bat").read_bytes().replace(b"\r\n", b"\n").replace(b"\n", b"\r\n")
-    (STAGE / "RUN.bat").write_bytes(run)
+    for name in ("RUN.bat", "RUN-MTP.bat", "RUN-DFLASH2.bat"):
+        run = (packaged / name).read_bytes().replace(b"\r\n", b"\n").replace(b"\n", b"\r\n")
+        (STAGE / name).write_bytes(run)
     if any(p.name.endswith("-of-00002.gguf") for p in STAGE.rglob("*.gguf")):
         raise RuntimeError("the user-supplied main model shards must not be bundled")
     provenance = {"source": UPSTREAM_URL, "tag": UPSTREAM_TAG, "commit": UPSTREAM_COMMIT,
@@ -166,12 +174,13 @@ def build() -> Path:
                   "python_embed_sha256": PYTHON_SHA, "mmproj_sha256": MMPROJ_SHA,
                   "model": "Qwen3.8-Flash-Next-GSQ-RCO-IQ3_XXS", "context_tokens": 262144,
                   "main_model_gguf_included": False,
+                  "dflash2_pack_in_separate_release_zip": True,
                   "mtp_runtime": "v0.2.12 tools/mtp_rt.py reproduced the included v0.1.45 runtime files byte-for-byte"}
     (STAGE / "SOURCE.json").write_text(json.dumps(provenance, indent=2) + "\n", encoding="utf-8")
     important = [STAGE / "engine" / name for name in
                  ("strata.exe", "strata-vision.exe", "strata_kq.dll", "cublas64_13.dll", "cublasLt64_13.dll",
                   "BUILD.json", "engine-component.json")]
-    important += [STAGE / name for name in ("prepare.py", "RUN.bat", "MANUAL.html", "SOURCE.json",
+    important += [STAGE / name for name in ("prepare.py", "RUN.bat", "RUN-MTP.bat", "RUN-DFLASH2.bat", "MANUAL.html", "SOURCE.json",
                                                  "serve/server.py", "tools/iq_pack.py", "strata_control/drafting.py",
                                                  "mtp/rt/experts.bin", "mtp/rt/dense.bin", "mtp/rt/dense.txt",
                                                  "mtp/rt/draft_vocab.bin", "models/mmproj-Qwen3.8-Flash-Next-BF16.gguf",
@@ -192,5 +201,37 @@ def build() -> Path:
     return out
 
 
+def build_dflash2() -> Path:
+    """A second ZIP merges into the base folder and stays below GitHub's per-asset limit."""
+    base = f"{DFLASH_REPO}/resolve/{DFLASH_REVISION}"
+    config = fetch(f"{base}/config.json", CACHE / "dflash2-config.json", DFLASH_CONFIG_SHA)
+    weights = fetch(f"{base}/model.safetensors", CACHE / "dflash2-model.safetensors", DFLASH_WEIGHTS_SHA)
+    pack = CACHE / DFLASH_PACK_NAME
+    if not pack.is_file() or pack.stat().st_size != DFLASH_PACK_BYTES or sha256(pack) != DFLASH_PACK_SHA:
+        print("Converting the pinned DFlash2 weights with original v0.2.12 tools/dflash2_pack.py ...", flush=True)
+        subprocess.run([sys.executable, str(SOURCE / "tools" / "dflash2_pack.py"),
+                        str(weights), str(config), str(pack), "--q4_0"], check=True)
+    if pack.stat().st_size != DFLASH_PACK_BYTES or sha256(pack) != DFLASH_PACK_SHA:
+        raise RuntimeError("DFlash2 pack does not match the original v0.2.12 pinned result")
+    addon = DIST / f"{NAME}-dflash2.zip"
+    attribution = {"source": DFLASH_REPO, "revision": DFLASH_REVISION,
+                   "source_safetensors_sha256": DFLASH_WEIGHTS_SHA,
+                   "conversion": "original Strata v0.2.12 tools/dflash2_pack.py --q4_0",
+                   "pack_name": DFLASH_PACK_NAME, "pack_bytes": DFLASH_PACK_BYTES,
+                   "pack_sha256": DFLASH_PACK_SHA, "license": "Apache-2.0"}
+    print(f"Writing {addon} ...", flush=True)
+    with zipfile.ZipFile(addon, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=1, allowZip64=True) as z:
+        z.write(pack, Path(NAME) / "dflash2" / DFLASH_PACK_NAME)
+        z.write(SOURCE / "data" / "dflash2-tuned" / "LICENSE", Path(NAME) / "dflash2" / "LICENSE")
+        z.writestr(str(Path(NAME) / "dflash2" / "SOURCE.json"), json.dumps(attribution, indent=2) + "\n")
+    with zipfile.ZipFile(addon) as z:
+        bad = z.testzip()
+        if bad is not None:
+            raise RuntimeError(f"DFlash2 ZIP CRC failed: {bad}")
+    print(f"Ready: {addon} ({addon.stat().st_size:,} bytes; SHA-256 {sha256(addon)})", flush=True)
+    return addon
+
+
 if __name__ == "__main__":
     build()
+    build_dflash2()

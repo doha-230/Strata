@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import importlib.util
+import hashlib
 import json
 import sys
 import tempfile
@@ -53,6 +54,35 @@ class OfflineProfile(unittest.TestCase):
         with mock.patch.object(prepare_mod.subprocess, "run", return_value=query):
             with self.assertRaisesRegex(RuntimeError, "580.65"):
                 prepare_mod.check_driver()
+
+    def test_dflash2_choice_checks_the_addon_and_selects_one_drafter(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            pack = root / "dflash2" / "test.pack"
+            pack.parent.mkdir()
+            pack.write_bytes(b"verified drafter")
+            with (mock.patch.object(prepare_mod, "DRAFT_PACK", pack),
+                  mock.patch.object(prepare_mod, "DRAFT_BYTES", pack.stat().st_size),
+                  mock.patch.object(prepare_mod, "DRAFT_SHA256", hashlib.sha256(pack.read_bytes()).hexdigest())):
+                prepare_mod.check_dflash_pack()
+                pack.write_bytes(b"changed drafter!")
+                with self.assertRaisesRegex(RuntimeError, "SHA-256"):
+                    prepare_mod.check_dflash_pack()
+            with (mock.patch.object(prepare_mod, "ROOT", root),
+                  mock.patch.object(prepare_mod, "PACK", root / "packs" / "iq3_xxs"),
+                  mock.patch.object(prepare_mod, "MTP", root / "mtp" / "rt"),
+                  mock.patch.object(prepare_mod, "MMPROJ", root / "models" / "mmproj.gguf"),
+                  mock.patch.object(prepare_mod, "SHARDS", [root / "models" / "first.gguf", root / "models" / "second.gguf"]),
+                  mock.patch.object(prepare_mod, "CONFIG", root / "config.json"),
+                  mock.patch.object(prepare_mod, "check_driver"),
+                  mock.patch.object(prepare_mod, "check_files") as checked):
+                (root / "packs" / "iq3_xxs" / "tokenizer").mkdir(parents=True)
+                (root / "packs" / "iq3_xxs" / "native_experts.txt").write_text("ready")
+                (root / "packs" / "iq3_xxs" / "tokenizer" / "vocab.json").write_text("{}")
+                config = prepare_mod.prepare("dflash2")
+            checked.assert_called_once_with("dflash2")
+            self.assertEqual(config["drafting"], "dflash2")
+            self.assertIn("--mtp", config["args"])  # original server keeps the MTP path for its draft vocabulary
 
 
 if __name__ == "__main__":

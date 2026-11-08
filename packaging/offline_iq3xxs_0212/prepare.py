@@ -1,6 +1,8 @@
 """Prepare the pinned upstream Strata 0.2.12 Windows IQ3_XXS bundle without network access."""
 from __future__ import annotations
 
+import argparse
+import hashlib
 import json
 import subprocess
 import sys
@@ -16,6 +18,9 @@ MMPROJ = ROOT / "models" / "mmproj-Qwen3.8-Flash-Next-BF16.gguf"
 PACK = ROOT / "packs" / "iq3_xxs"
 MTP = ROOT / "mtp" / "rt"
 CONFIG = ROOT / "strata-iq3_xxs.json"
+DRAFT_PACK = ROOT / "dflash2" / "qwen3.8-flash-next-dflash2.q4_0.pack"
+DRAFT_BYTES = 522458112
+DRAFT_SHA256 = "cda40d62d0eb8f37ed6e272142641a1d2f0de4a32f9e14d0416e7a71534849f1"
 ENGINE_VERSION = "0.1.58"
 CONTEXT = 262144
 KV_RESIDENT = 32768
@@ -41,7 +46,20 @@ def check_driver() -> str:
     return result.stdout.strip()
 
 
-def check_files() -> None:
+def check_dflash_pack() -> None:
+    if not DRAFT_PACK.is_file():
+        raise RuntimeError("DFlash2 pack이 없습니다. 릴리스의 DFlash2 추가 ZIP을 같은 폴더에 풀어 주세요.")
+    if DRAFT_PACK.stat().st_size != DRAFT_BYTES:
+        raise RuntimeError("DFlash2 pack 크기가 원본 v0.2.12의 고정값과 다릅니다.")
+    digest = hashlib.sha256()
+    with DRAFT_PACK.open("rb") as stream:
+        for chunk in iter(lambda: stream.read(8 * 1024 * 1024), b""):
+            digest.update(chunk)
+    if digest.hexdigest() != DRAFT_SHA256:
+        raise RuntimeError("DFlash2 pack SHA-256이 원본 v0.2.12의 고정값과 다릅니다.")
+
+
+def check_files(drafter: str = "mtp") -> None:
     required = [ROOT / "engine" / "strata.exe", ROOT / "engine" / "strata-vision.exe",
                 ROOT / "engine" / "cublas64_13.dll", ROOT / "engine" / "cublasLt64_13.dll",
                 ROOT / "data" / "expert-profile.bin", MTP / "experts.bin", MTP / "dense.bin",
@@ -66,11 +84,15 @@ def check_files() -> None:
         raise RuntimeError("첫 번째 파일은 지정한 GSQ-RCO IQ3_XXS 양자화 GGUF가 아닙니다.")
     if not any(t.name == "per_layer_token_embd.weight" for t in second.tensors):
         raise RuntimeError("두 번째 GGUF에 PLE 테이블이 없습니다. 지정한 모델의 두 조각을 확인하세요.")
+    if drafter == "dflash2":
+        check_dflash_pack()
 
 
-def prepare() -> dict:
+def prepare(drafter: str = "mtp") -> dict:
+    if drafter not in ("mtp", "dflash2"):
+        raise ValueError(f"지원하지 않는 생성 보조 방식: {drafter}")
     check_driver()
-    check_files()
+    check_files(drafter)
     if not (PACK / "native_experts.txt").exists() or not (PACK / "tokenizer" / "vocab.json").exists():
         print("원본 GGUF에서 Strata pack과 토크나이저를 준비합니다. 첫 실행에는 시간이 걸립니다.", flush=True)
         subprocess.run([sys.executable, str(ROOT / "tools" / "iq_pack.py"),
@@ -84,20 +106,23 @@ def prepare() -> dict:
                  "--vision", "--vram-reserve-mib", "700"],
         "cwd": str(ROOT), "tokenizer": str(PACK / "tokenizer"),
         "model_name": "qwen3.8-flash-next-iq3_xxs", "arch": "qwen4exp", "backend": "cuda",
-        "drafting": "mtp", "log": str(ROOT / "strata-iq3_xxs.log"),
+        "drafting": drafter, "log": str(ROOT / "strata-iq3_xxs.log"),
         "lib_dirs": [str(ROOT / "engine")], "gpu": 0, "port": 8080, "host": "127.0.0.1",
         "vision": {"exe": str(ROOT / "engine" / "strata-vision.exe"), "mmproj": str(MMPROJ),
                    "model": str(SHARDS[0]), "gpu": True, "max_tokens": 1024},
     }
     CONFIG.write_text(json.dumps(cfg, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-    print(f"준비 완료: 원본 엔진 {ENGINE_VERSION}, 256K 컨텍스트, int8 KV (GPU 상주 {KV_RESIDENT}토큰), MTP, 이미지 입력.",
+    print(f"준비 완료: 원본 엔진 {ENGINE_VERSION}, 256K 컨텍스트, int8 KV (GPU 상주 {KV_RESIDENT}토큰), {drafter.upper()}, 이미지 입력.",
           flush=True)
     return cfg
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="원본 Strata v0.2.12 폐쇄망 실행 설정")
+    parser.add_argument("--drafter", choices=("mtp", "dflash2"), default="mtp")
+    options = parser.parse_args()
     try:
-        prepare()
+        prepare(options.drafter)
     except (OSError, ValueError, RuntimeError, subprocess.CalledProcessError) as exc:
         print(f"준비 실패: {exc}", file=sys.stderr, flush=True)
         raise SystemExit(1) from exc

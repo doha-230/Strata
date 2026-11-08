@@ -1,0 +1,15 @@
+@echo off
+setlocal
+chcp 65001 >nul
+cd /d "%~dp0"
+"%~dp0python\python.exe" "%~dp0prepare.py" --drafter mtp
+if errorlevel 1 goto failed
+"%~dp0python\python.exe" "%~dp0serve\server.py" --engine strata --config "%~dp0strata-iq3_xxs.json" --offline --port 8080 --open
+if errorlevel 1 goto failed
+exit /b 0
+
+:failed
+echo.
+echo Strata stopped. Check the message above and strata-iq3_xxs.log if present.
+pause
+exit /b 1
